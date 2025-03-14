@@ -4,9 +4,10 @@
   "description": "",
   "main": "dist/app.js",
   "scripts": {
-    "build": "prisma generate && tsc",
+    "build": "npx prisma generate && tsc",
     "start": "node dist/app.js",
-    "dev": "nodemon app.ts"
+    "dev": "nodemon app.ts",
+    "postinstall": "prisma generate"
   },
   "keywords": [],
   "author": "",
