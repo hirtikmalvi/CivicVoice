@@ -13,7 +13,7 @@ app.use(express.json());
 
 // Default route
 app.get("/", (req: Request, res: Response) => {
-    res.send("Hello, TypeScript Backend!");
+    res.send("<h1>CivicVoice</h1>");
 });
 
 // Start server
