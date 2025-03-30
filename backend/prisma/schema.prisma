@@ -1,21 +1,20 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
   extensions = [postgis]
 }
 
 model admins {
-  admin_id   BigInt      @id @default(autoincrement())
-  user_id    BigInt      @unique
-  role       admins_role
-  created_at DateTime?   @default(now()) @db.Timestamp(6)
-  updated_at DateTime?   @default(now()) @db.Timestamp(6)
-  users      users       @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_admin_user_id")
+  admin_id   BigInt    @id @default(autoincrement())
+  user_id    BigInt    @unique
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  updated_at DateTime? @default(now()) @db.Timestamp(6)
+  users      users     @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_admin_user_id")
 }
 
 model authority {
@@ -35,15 +34,13 @@ model citizen {
   user_id           BigInt                  @unique
   adhar_number      String                  @unique @db.Char(12)
   phone_number      String                  @unique @db.Char(10)
-  house_number      String                  @db.VarChar(10)
-  street            String                  @db.VarChar(50)
-  landmark          String?                 @db.VarChar(50)
   city              String                  @db.VarChar(50)
   state             String                  @db.VarChar(50)
   pincode           String                  @db.Char(6)
   location          Unsupported("geometry")
   created_at        DateTime?               @default(now()) @db.Timestamp(6)
   updated_at        DateTime?               @default(now()) @db.Timestamp(6)
+  address           String
   users             users                   @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_citizen_user_id")
   complaint         complaint[]
   upvoted_complaint upvoted_complaint[]
@@ -56,7 +53,6 @@ model complaint {
   description       String
   status            complaint_status        @default(Pending)
   category          complaint_category?
-  media_url         String?
   location          Unsupported("geometry")
   authority_id      BigInt?
   created_at        DateTime?               @default(now()) @db.Timestamp(6)
@@ -100,7 +96,6 @@ model upvoted_complaint {
 model users {
   user_id    BigInt     @id @default(autoincrement())
   fullname   String     @db.VarChar(50)
-  username   String     @unique @db.VarChar(30)
   password   String
   email      String     @unique @db.VarChar(50)
   role       users_role
@@ -111,9 +106,13 @@ model users {
   citizen    citizen?
 }
 
-enum admins_role {
-  Superadmin
-  Moderator
+model audit_log {
+  log_id       BigInt    @id @default(autoincrement())
+  table_name   String    @db.VarChar(50)
+  operation    String    @db.VarChar(10)
+  record_id    BigInt
+  changed_data Json
+  changed_at   DateTime? @default(now()) @db.Timestamp(6)
 }
 
 enum authority_zone {
