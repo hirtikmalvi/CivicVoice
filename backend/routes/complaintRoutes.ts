@@ -1,9 +1,13 @@
 import express from "express";
 import { getComplaintById, getComplaintMedia, getComplaints, getComplaintsByAuthority, getComplaintsByCategory, getComplaintsByCitizen, getComplaintsByStatus } from "../controllers/complaintController";
+import { isAuthenticated } from "../middlewares/authMiddleware";
+import { isCitizen } from "../middlewares/isCitizen";
+import { isAdmin } from "../middlewares/isAdmin";
 
 const router = express.Router();
 
 // Get All Complaints
+// router.route("/").get(isAuthenticated, isAdmin, getComplaints);
 router.route("/").get(getComplaints);
 
 // Get Complaints By CitizenId

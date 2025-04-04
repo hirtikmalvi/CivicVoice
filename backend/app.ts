@@ -1,25 +1,29 @@
 import express, { json } from "express";
-import { PrismaClient, Prisma } from "@prisma/client";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import complaintRoutes from "./routes/complaintRoutes";
 import { apiRoutes } from "./endpoints_info/data";
+import userRoutes from "./routes/userRoutes";
+import { asyncHandler } from "./middlewares/asyncHandler";
+
+
+//Load environment variable
+dotenv.config();
 
 const app = express();
-const prisma = new PrismaClient();
-
-dotenv.config();
 const PORT = process.env.PORT || 5000;
 
+//Middleware to parse Incoming JSON
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
-app.use("/api/complaints", complaintRoutes); // Complaint  Routes
+app.use("/api/complaints", complaintRoutes); 
+app.use("/api/user", userRoutes);
 
 app.get("/", async (req, res) => {
   res.json(apiRoutes);
 });
 
-app.listen(PORT, () => console.log(`Server Started at ${PORT}`));
+app.listen(5000, () => console.log(`Server is running on Port ${process.env.PORT}`));
