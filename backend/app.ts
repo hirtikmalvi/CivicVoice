@@ -18,6 +18,8 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use("/api/complaints", complaintRoutes); // Complaint  Routes
 
+// app.use("/api/upload", uploadRoutes); // Upload  Routes
+
 app.get("/", async (req, res) => {
   res.json(apiRoutes);
 });

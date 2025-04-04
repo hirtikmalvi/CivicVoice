@@ -5,6 +5,16 @@ import {
 } from "@prisma/client";
 import { asyncHandler, CustomError } from "../middlewares/asyncHandler";
 import bigInt from "big-integer";
+import { Request, Response } from "express";
+import { uploadToCloudinary } from "../utils/uploadToCloudinary";
+import {
+  generateDescriptionFromContext,
+  generateTitleFromContext,
+} from "../utils/complaintHelpter";
+import { transcribeAudio } from "../utils/transcribeHelper";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const prisma = new PrismaClient();
 
@@ -161,3 +171,113 @@ export const getComplaintsByAuthority = asyncHandler(async (req, res) => {
     }))
   );
 });
+
+// New complaint
+export const createComplaint = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { citizen_id, keywords, title } = req.body;
+    let complaintText = keywords || "";
+
+    // If audio is uploaded, transcribe it
+    if (req.file && req.file.mimetype.startsWith("audio")) {
+      const transcribedText = await transcribeAudio(req.file.buffer);
+      complaintText += ` ${transcribedText}`;
+    }
+
+    // Ensure there is complaint text to process
+    if (!complaintText) {
+      throw new CustomError("No keywords or audio provided!", 400);
+    }
+
+    // Generate AI-based complaint description using Hugging Face
+    const complaintDescription = await generateDescriptionFromContext(
+      complaintText
+    );
+
+    // Generate AI-based title using Hugging Face if not provided
+    const complaintTitle =
+      title || (await generateTitleFromContext(complaintText));
+
+    // Save complaint in database
+    const complaint = await prisma.complaint.create({
+      data: {
+        citizen_id: BigInt(citizen_id),
+        title: complaintTitle,
+        description: complaintDescription,
+      },
+    });
+
+    if (complaint) {
+      // Handle image/video upload if exists
+      let mediaUrl = null;
+      if (
+        req.file &&
+        (req.file.mimetype.startsWith("image") ||
+          req.file.mimetype.startsWith("video"))
+      ) {
+        const uploadResult = await uploadToCloudinary(
+          req.file.buffer,
+          req.file.mimetype,
+          "complaints"
+        );
+        mediaUrl = uploadResult.secure_url;
+
+        // Save media in DB
+        await prisma.complaint_media.create({
+          data: {
+            complaint_id: complaint.complaint_id,
+            media_url: mediaUrl,
+            media_type: req.file.mimetype.split("/")[0],
+          },
+        });
+      }
+      // Response
+      return res.status(201).json({
+        message: "Complaint created successfully!",
+        complaint: {
+          ...complaint,
+          complaint_id: bigInt(complaint.complaint_id),
+          citizen_id: bigInt(complaint.citizen_id),
+          mediaUrl,
+        },
+      });
+    }
+  }
+);
+
+// Upvote a complaint
+export const upvoteComplaint = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { complaintId } = req.params;
+    const { citizen_id } = req.body;
+
+    if (!citizen_id) {
+      throw new CustomError("Citizen ID is required", 400);
+    }
+
+    const existingUpvote = await prisma.upvoted_complaint.findUnique({
+      where: {
+        complaint_id_citizen_id: {
+          complaint_id: BigInt(complaintId),
+          citizen_id: BigInt(citizen_id),
+        },
+      },
+    });
+
+    if (existingUpvote) {
+      throw new CustomError("You already upvoted this complaint", 409);
+    }
+
+    const newUpvote = await prisma.upvoted_complaint.create({
+      data: {
+        complaint_id: BigInt(complaintId),
+        citizen_id: BigInt(citizen_id),
+      },
+    });
+
+    res.status(201).json({
+      message: "Complaint upvoted successfully",
+      upvote: newUpvote,
+    });
+  }
+);
