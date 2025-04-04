@@ -29,6 +29,7 @@ app.use(express_1.default.urlencoded({ extended: true }));
 // Routes
 app.use("/api/complaints", complaintRoutes_1.default);
 app.use("/api/user", userRoutes_1.default);
+// app.use("/api/upload", uploadRoutes); // Upload  Routes
 app.get("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     res.json(data_1.apiRoutes);
 }));

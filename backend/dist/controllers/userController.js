@@ -24,7 +24,7 @@ exports.handleRegistration = (0, asyncHandler_1.asyncHandler)((req, res) => __aw
     res.status(201).json({
         message: "User registered successfully",
         success: true,
-        user: Object.assign(Object.assign({}, newUser), { user_id: (0, big_integer_1.default)(newUser.user_id) })
+        user: Object.assign(Object.assign({}, newUser), { user_id: (0, big_integer_1.default)(newUser.user_id) }),
     });
 }));
 exports.handleLogin = (0, asyncHandler_1.asyncHandler)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -32,18 +32,19 @@ exports.handleLogin = (0, asyncHandler_1.asyncHandler)((req, res) => __awaiter(v
     if (!user || !token) {
         throw new asyncHandler_1.CustomError("Invalid email or password", 401);
     }
-    res.status(200)
+    res
+        .status(200)
         .cookie("token", token, {
         expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         httpOnly: true, // Security improvement
         secure: process.env.NODE_ENV === "production", // Enable in production
-        sameSite: "strict"
+        sameSite: "strict",
     })
         .json({
         message: "Login successful",
         success: true,
         token,
-        user: Object.assign(Object.assign({}, user), { user_id: (0, big_integer_1.default)(user.user_id) })
+        user: Object.assign(Object.assign({}, user), { user_id: (0, big_integer_1.default)(user.user_id) }),
     });
 }));
 //# sourceMappingURL=userController.js.map

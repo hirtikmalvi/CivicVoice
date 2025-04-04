@@ -29,7 +29,7 @@ const registerUser = (data) => __awaiter(void 0, void 0, void 0, function* () {
         throw new asyncHandler_1.CustomError("Email already exists", 409);
     }
     if (role === client_1.users_role.Citizen)
-        (0, validations_1.isValidCitizen)(role_based_data);
+        yield (0, validations_1.isValidCitizen)(role_based_data);
     else if (role === client_1.users_role.Authority)
         (0, validations_1.isValidAuthority)(role_based_data);
     const hashedPassword = yield (0, hashPassword_1.hashPassword)(password);

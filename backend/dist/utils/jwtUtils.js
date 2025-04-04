@@ -14,7 +14,7 @@ if (!JWT_SECRET) {
 const generateToken = (uid, role) => {
     try {
         let userId = (0, big_integer_1.default)(uid);
-        return jsonwebtoken_1.default.sign({ userId: userId, role }, JWT_SECRET, { expiresIn: "7d" });
+        return jsonwebtoken_1.default.sign({ user_id: userId, role }, JWT_SECRET, { expiresIn: "7d" });
     }
     catch (error) {
         throw new asyncHandler_1.CustomError("Error generating JWT token", 500);

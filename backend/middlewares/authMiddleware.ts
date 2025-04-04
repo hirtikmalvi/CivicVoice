@@ -15,16 +15,16 @@ export const isAuthenticated = async (
 ) => {
   try {
     const token = req.cookies.token;
-    
+
     if (!token) {
-        throw new CustomError("Not authenticated. Please login.", 401);
+      throw new CustomError("Not authenticated. Please login.", 401);
     }
-    
+
     const decoded = jwt.verify(token, process.env.SECRET_KEY!) as JwtPayload;
-    console.log(decoded)
-    
+    console.log(decoded);
+
     const user = await prisma.users.findUnique({
-        where: { user_id: BigInt(decoded.user_id) },
+      where: { user_id: BigInt(decoded.user_id) },
     });
 
     if (!user) {
