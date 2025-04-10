@@ -54,11 +54,12 @@ model complaint {
   description       String
   status            complaint_status    @default(Pending)
   category          complaint_category?
+  media_url         String?
+  latitude          Float?
+  longitude         Float?
   authority_id      BigInt?
   created_at        DateTime?           @default(now()) @db.Timestamp(6)
   updated_at        DateTime?           @default(now()) @db.Timestamp(6)
-  latitude          Float?
-  longitude         Float?
   authority         authority?          @relation(fields: [authority_id], references: [authority_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_complaint_authority_id")
   citizen           citizen             @relation(fields: [citizen_id], references: [citizen_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_complaint_citizen_id")
   complaint_media   complaint_media[]
