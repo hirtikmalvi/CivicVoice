@@ -13,22 +13,25 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
-const client_1 = require("@prisma/client");
 const dotenv_1 = __importDefault(require("dotenv"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const complaintRoutes_1 = __importDefault(require("./routes/complaintRoutes"));
 const data_1 = require("./endpoints_info/data");
-const app = (0, express_1.default)();
-const prisma = new client_1.PrismaClient();
+const userRoutes_1 = __importDefault(require("./routes/userRoutes"));
+//Load environment variable
 dotenv_1.default.config();
+const app = (0, express_1.default)();
 const PORT = process.env.PORT || 5000;
+//Middleware to parse Incoming JSON
 app.use(express_1.default.json());
 app.use((0, cookie_parser_1.default)());
 app.use(express_1.default.urlencoded({ extended: true }));
 // Routes
-app.use("/api/complaints", complaintRoutes_1.default); // Complaint  Routes
+app.use("/api/complaints", complaintRoutes_1.default);
+app.use("/api/user", userRoutes_1.default);
+// app.use("/api/upload", uploadRoutes); // Upload  Routes
 app.get("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     res.json(data_1.apiRoutes);
 }));
-app.listen(PORT, () => console.log(`Server Started at ${PORT}`));
+app.listen(5000, () => console.log(`Server is running on Port ${process.env.PORT}`));
 //# sourceMappingURL=app.js.map

@@ -7,6 +7,7 @@ const express_1 = __importDefault(require("express"));
 const complaintController_1 = require("../controllers/complaintController");
 const router = express_1.default.Router();
 // Get All Complaints
+// router.route("/").get(isAuthenticated, isAdmin, getComplaints);
 router.route("/").get(complaintController_1.getComplaints);
 // Get Complaints By CitizenId
 router.route("/citizen/:citizenId").get(complaintController_1.getComplaintsByCitizen);
@@ -20,5 +21,9 @@ router.route("/status/:statusName").get(complaintController_1.getComplaintsBySta
 router.route("/:complaintId/media").get(complaintController_1.getComplaintMedia);
 // Get All Complaints assigned to specific authority
 router.route("/authority/:authorityId").get(complaintController_1.getComplaintsByAuthority);
+// Create new complaint
+router.post("/", complaintController_1.createComplaint);
+// Upvote a complaint
+router.post("/:complaintId/upvote", complaintController_1.upvoteComplaint);
 exports.default = router;
 //# sourceMappingURL=complaintRoutes.js.map
