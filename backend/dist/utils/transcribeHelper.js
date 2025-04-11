@@ -13,18 +13,40 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.transcribeAudio = void 0;
-const axios_1 = __importDefault(require("axios"));
-const form_data_1 = __importDefault(require("form-data"));
-const transcribeAudio = (fileBuffer) => __awaiter(void 0, void 0, void 0, function* () {
-    const formData = new form_data_1.default();
-    formData.append("file", new Blob([fileBuffer]), "audio.mp3");
-    formData.append("model", "whisper-1");
-    const response = yield axios_1.default.post("https://api.openai.com/v1/audio/transcriptions", formData, {
-        headers: {
-            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        },
-    });
-    return response.data.text;
+const path_1 = __importDefault(require("path"));
+const promises_1 = __importDefault(require("fs/promises"));
+const fs_1 = __importDefault(require("fs")); // for checking dir existence
+const genai_1 = require("@google/genai");
+const asyncHandler_1 = require("../middlewares/asyncHandler");
+const transcribeAudio = (fileBuffer, mimeType) => __awaiter(void 0, void 0, void 0, function* () {
+    const ai = new genai_1.GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    // Ensure the "temp" folder exists
+    const tempDir = path_1.default.join(__dirname, "..", "temp");
+    if (!fs_1.default.existsSync(tempDir)) {
+        yield promises_1.default.mkdir(tempDir, { recursive: true });
+    }
+    const tempPath = path_1.default.join(tempDir, `audio_${Date.now()}.mp3`);
+    yield promises_1.default.writeFile(tempPath, fileBuffer);
+    try {
+        const uploadedMedia = yield ai.files.upload({
+            file: tempPath,
+            config: { mimeType },
+        });
+        const response = yield ai.models.generateContent({
+            model: "gemini-2.0-flash",
+            contents: (0, genai_1.createUserContent)([
+                (0, genai_1.createPartFromUri)(uploadedMedia.uri, uploadedMedia.mimeType),
+                "Transcribe the spoken content in this audio. Return only the text in plain format. Identify the language. Transcribed text must only be in English",
+            ]),
+        });
+        return response.text.trim();
+    }
+    catch (error) {
+        throw new asyncHandler_1.CustomError("Some error has occurred while transcribing audio", 500);
+    }
+    finally {
+        yield promises_1.default.unlink(tempPath); // cleanup
+    }
 });
 exports.transcribeAudio = transcribeAudio;
 //# sourceMappingURL=transcribeHelper.js.map
