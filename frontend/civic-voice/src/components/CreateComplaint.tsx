@@ -25,25 +25,14 @@ const CreateComplaint: React.FC<CreateComplaintProps> = ({ onClose, onComplaintC
   const [category, setCategory] = useState("");
 
 
-  useEffect(() => {
-    // Get user location (lat/lng)
-    navigator.geolocation.getCurrentPosition((position) => {
-      setLatitude(position.coords.latitude);
-      setLongitude(position.coords.longitude);
-    });
+  // useEffect(() => {
+  //   // Get user location (lat/lng)
+  //   navigator.geolocation.getCurrentPosition((position) => {
+  //     setLatitude(position.coords.latitude);
+  //     setLongitude(position.coords.longitude);
+  //   });
 
-    // Fetch departments from backend
-    const fetchDepartments = async () => {
-      try {
-        const res = await axios.get("http://localhost:3000/api/departments");
-        setDepartments(res.data);
-      } catch (error) {
-        console.error("Failed to fetch departments", error);
-      }
-    };
 
-    fetchDepartments();
-  }, []);
 
   const handleAudioGenerate = async () => {
     setIsGenerating(true);
