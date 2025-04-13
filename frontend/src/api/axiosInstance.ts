@@ -1,10 +1,7 @@
 import axios from "axios";
-import dotenv from "dotenv";
-
-dotenv.config();
 
 const axiosInstance = axios.create({
-  baseURL: process.env.BACKEND_URL, // adjust to your backend route
+  baseURL: process.env.REACT_APP_BACKEND_URL, // adjust to your backend route
   withCredentials: true,
 });
 axiosInstance.interceptors.request.use((config) => {

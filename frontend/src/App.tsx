@@ -4,36 +4,40 @@ import Home from "./pages/Home";
 import Login from "./components/login";
 import Register from "./components/Register";
 import AuthorityDashboard from "./components/AuthorityDashboard";
-import UserDashboard from "./components/UserDashboard";
+import UserDashboard from "./pages/citizen/CitizenDashboard";
 import AdminDashboard from "./components/AdminDashboard";
 import ProtectedRoute from "./components/protectedRoutes";
-import NotFound from "./components/NotFound";
-import CreateComplaint from "./components/CreateComplaint";
+import NotFound from "./pages/NotFound";
+import CitizenLogin from "./pages/citizen/CitizenLogin";
+import CitizenRegister from "./pages/citizen/CitizenRegister";
+import CitizenDashboard from "./pages/citizen/CitizenDashboard";
 
 function App() {
   return (
     <Router>
       <Routes>
+        {/* Public */}
         <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<CitizenLogin />} />
+        <Route path="/register" element={<CitizenRegister />} />
 
-        {/* Protected Routes */}
-        <Route element={<ProtectedRoute allowedRoles={["Citizen"]} />}>
-          <Route path="/user-dashboard" element={<UserDashboard />} />
-          {/* <Route path="/create-complaint" element = {<CreateComplaint />}/> */}
-        </Route>
-
-        <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
-          <Route path="/admin-dashboard" element={<AdminDashboard />} />
-        </Route>
-
-        <Route element={<ProtectedRoute allowedRoles={["authority"]} />}>
-          <Route path="/authority-dashboard" element={<AuthorityDashboard />} />
-        </Route>
-
-        {/* Catch-All for Unauthorized Access */}
-        <Route path="*" element={<NotFound />} />
+        {/* Protected Citizen Routes */}
+        <Route
+          path="/citizen/dashboard"
+          element={
+            <ProtectedRoute>
+              <CitizenDashboard />
+            </ProtectedRoute>
+          }
+        />
+        {/* <Route
+        path="/citizen/complaints/create"
+        element={
+          <ProtectedRoute allowedRole="Citizen">
+            <CreateComplaint />
+          </ProtectedRoute>
+        }
+      /> */}
       </Routes>
     </Router>
   );

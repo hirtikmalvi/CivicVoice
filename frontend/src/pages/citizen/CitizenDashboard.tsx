@@ -12,37 +12,36 @@ import {
   Form,
 } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import { getUserFromToken } from "../hooks/useAuth";
-import CreateComplaint from "./CreateComplaint";
-
-
-// ... imports remain unchanged
+import { getUserFromToken } from "../../hooks/useAuth";
+import axios from "../../api/axiosInstance"; // Import the axiosInstance
 
 interface Complaint {
-  id: number;
+  complaint_id: number;
   title: string;
   status: string;
   upvotes: number;
-  createdBy: string;
-  createdAt: string;
+  citizen_id: string;
+  created_at: string;
 }
 
-const UserDashboard: React.FC = () => {
+const CitizenDashboard: React.FC = () => {
   const user = getUserFromToken();
   const navigate = useNavigate();
   const [view, setView] = useState<"my" | "all" | "trending">("my");
   const [showProfile, setShowProfile] = useState(false);
   const [showComplaintModal, setShowComplaintModal] = useState(false);
-  const [newComplaint, setNewComplaint] = useState({ title: "", status: "Pending" });
+  const [newComplaint, setNewComplaint] = useState({
+    title: "",
+    status: "Pending",
+  });
   const [allComplaints, setAllComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(false);
 
   const fetchComplaints = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/complaints");
-      const data = await res.json();
-      setAllComplaints(Array.isArray(data) ? data : []);
+      const response = await axios.get("/api/complaints/");
+      setAllComplaints(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       console.error("Error fetching complaints:", err);
       setAllComplaints([]);
@@ -51,13 +50,23 @@ const UserDashboard: React.FC = () => {
     }
   };
 
+  // const getCitizenById = async (citizen_id: string): Promise<any> => {
+  //   try {
+  //     const response = await axios.get(`/api/citizen/${citizen_id}`); // Use relative path
+  //     return response.data.citizen.fullname as string;
+  //   } catch (err) {
+  //     console.error(err);
+  //   }
+  // };
+
   const fetchUserComplaints = async () => {
     if (!user?.id) return;
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/complaints/citizen/${user.id}`);
-      const data = await res.json();
-      setAllComplaints(Array.isArray(data) ? data : []);
+      const response = await axios.get(
+        `/api/complaints/citizen/${user.id}` // Use relative path
+      );
+      setAllComplaints(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       console.error("Error fetching user complaints:", err);
       setAllComplaints([]);
@@ -81,19 +90,21 @@ const UserDashboard: React.FC = () => {
 
   const handleUpvote = (id: number) => {
     setAllComplaints((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, upvotes: c.upvotes + 1 } : c))
+      prev.map((c) =>
+        c.complaint_id === id ? { ...c, upvotes: c.upvotes + 1 } : c
+      )
     );
   };
 
   const handleComplaintSubmit = () => {
     const newId = allComplaints.length + 1;
     const newEntry: Complaint = {
-      id: newId,
+      complaint_id: newId,
       title: newComplaint.title,
       status: newComplaint.status,
       upvotes: 0,
-      createdBy: user?.name || "anonymous",
-      createdAt: new Date().toISOString(),
+      citizen_id: user?.name || "anonymous",
+      created_at: new Date().toISOString(),
     };
 
     setAllComplaints([...allComplaints, newEntry]);
@@ -127,8 +138,8 @@ const UserDashboard: React.FC = () => {
           </tr>
         ) : (
           complaints.map((c) => (
-            <tr key={c.id}>
-              <td>{c.id}</td>
+            <tr key={c.complaint_id}>
+              <td>{c.complaint_id}</td>
               <td>{c.title}</td>
               <td>
                 <Badge bg={c.status === "Resolved" ? "success" : "warning"}>
@@ -136,10 +147,14 @@ const UserDashboard: React.FC = () => {
                 </Badge>
               </td>
               <td>{c.upvotes}</td>
-              <td>{c.createdBy}</td>
-              <td>{new Date(c.createdAt).toLocaleString()}</td>
+              {/* <td>{getCitizenById(c.citizen_id)}</td> */}
+              <td>{new Date(c.created_at).toISOString().split("T")[0]}</td>
               <td>
-                <Button size="sm" variant="outline-primary" onClick={() => handleUpvote(c.id)}>
+                <Button
+                  size="sm"
+                  variant="outline-primary"
+                  onClick={() => handleUpvote(c.complaint_id)}
+                >
                   Upvote
                 </Button>
               </td>
@@ -152,7 +167,11 @@ const UserDashboard: React.FC = () => {
 
   return (
     <>
-      <Navbar bg="light" expand="lg" className="px-4 d-flex justify-content-between">
+      <Navbar
+        bg="light"
+        expand="lg"
+        className="px-4 d-flex justify-content-between"
+      >
         <div className="d-flex align-items-center gap-3">
           <Nav>
             <Nav.Link onClick={() => setView("my")} active={view === "my"}>
@@ -161,7 +180,10 @@ const UserDashboard: React.FC = () => {
             <Nav.Link onClick={() => setView("all")} active={view === "all"}>
               All Complaints
             </Nav.Link>
-            <Nav.Link onClick={() => setView("trending")} active={view === "trending"}>
+            <Nav.Link
+              onClick={() => setView("trending")}
+              active={view === "trending"}
+            >
               Trending
             </Nav.Link>
           </Nav>
@@ -213,9 +235,15 @@ const UserDashboard: React.FC = () => {
           <Modal.Title>👤 Profile</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <p><strong>Name:</strong> {user?.name}</p>
-          <p><strong>Email:</strong> {user?.email}</p>
-          <p><strong>Role:</strong> {user?.role}</p>
+          <p>
+            <strong>Name:</strong> {user?.name}
+          </p>
+          <p>
+            <strong>Email:</strong> {user?.email}
+          </p>
+          <p>
+            <strong>Role:</strong> {user?.role}
+          </p>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowProfile(false)}>
@@ -225,19 +253,28 @@ const UserDashboard: React.FC = () => {
       </Modal>
 
       {/* Create Complaint Modal */}
-      <Modal show={showComplaintModal} onHide={() => setShowComplaintModal(false)}>
+      <Modal
+        show={showComplaintModal}
+        onHide={() => setShowComplaintModal(false)}
+      >
         <Modal.Header closeButton>
           <Modal.Title>Create Complaint</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <CreateComplaint onClose={function (): void {
+          {/* <CreateComplaint
+          onClose={function (): void {
             throw new Error("Function not implemented.");
-          } } onComplaintCreated={function (): void {
+          }}
+          onComplaintCreated={function (): void {
             throw new Error("Function not implemented.");
-          } }></CreateComplaint>
+          }}
+        ></CreateComplaint> */}
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowComplaintModal(false)}>
+          <Button
+            variant="secondary"
+            onClick={() => setShowComplaintModal(false)}
+          >
             Cancel
           </Button>
           <Button variant="success" onClick={handleComplaintSubmit}>
@@ -249,4 +286,4 @@ const UserDashboard: React.FC = () => {
   );
 };
 
-export default UserDashboard;
+export default CitizenDashboard;

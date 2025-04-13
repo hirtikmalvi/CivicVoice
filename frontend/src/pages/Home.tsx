@@ -16,19 +16,33 @@ const Home: React.FC = () => {
         color: "#fff",
       }}
     >
-      <Container className="text-center p-5 rounded shadow-lg" style={{ backgroundColor: "rgba(0, 0, 0, 0.4)" }}>
+      <Container
+        className="text-center p-5 rounded shadow-lg"
+        style={{ backgroundColor: "rgba(0, 0, 0, 0.4)" }}
+      >
         <h1 className="display-4 fw-bold mb-3">Welcome to CivicVoice</h1>
         <p className="lead mb-4">
-          Empowering citizens to report municipal issues and track their resolution — quickly and transparently.
+          Empowering citizens to report municipal issues and track their
+          resolution — quickly and transparently.
         </p>
         <Row className="justify-content-center">
           <Col xs="auto">
-            <Button variant="light" size="lg" className="m-2 px-4" onClick={() => navigate("/login")}>
+            <Button
+              variant="light"
+              size="lg"
+              className="m-2 px-4"
+              onClick={() => navigate("/login")}
+            >
               Login
             </Button>
           </Col>
           <Col xs="auto">
-            <Button variant="outline-light" size="lg" className="m-2 px-4" onClick={() => navigate("/register")}>
+            <Button
+              variant="outline-light"
+              size="lg"
+              className="m-2 px-4"
+              onClick={() => navigate("/register")}
+            >
               Register
             </Button>
           </Col>

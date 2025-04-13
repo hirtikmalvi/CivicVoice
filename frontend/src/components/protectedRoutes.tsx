@@ -1,17 +1,18 @@
 import { Navigate, Outlet } from "react-router-dom";
+import Cookies from "js-cookie";
+import React from "react";
 
 interface ProtectedRouteProps {
-  allowedRoles: string[];
+  children: React.ReactElement;
+  //   allowedRoles: string[];
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles }) => {
-  const role = localStorage.getItem("role"); // Get role from storage
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
+  // const token = Cookies.get("token");
+  const token = localStorage.getItem("token");
+  if (!token) return <Navigate to="/login" replace />;
 
-  if (!role) return <Navigate to="/login" replace />; // Redirect if not logged in
-  if (!allowedRoles.includes(role)) return <Navigate to="/not-found" replace />; // Unauthorized access
-
-  return <Outlet />;
+  return children;
 };
 
 export default ProtectedRoute;
-    
