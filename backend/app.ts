@@ -3,12 +3,13 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import complaintRoutes from "./routes/complaintRoutes";
 import { apiRoutes } from "./endpoints_info/data";
-import userRoutes from "./routes/userRoutes";
 import mediaRoutes from "./routes/mediaRoutes";
 import upvoteRoutes from "./routes/upvoteRoutes";
 import statisticsRoutes from "./routes/statisticsRoutes";
 import cors from "cors";
-import { asyncHandler } from "./middlewares/asyncHandler";
+import citizenRoutes from "./routes/citizenRoutes";
+import adminRoutes from "./routes/adminRoutes";
+import authorityRoutes from "./routes/authorityRoutes";
 
 //Load environment variable
 dotenv.config();
@@ -29,10 +30,14 @@ app.use(
 );
 // Routes
 app.use("/api/complaints", complaintRoutes); // Complaint
-app.use("/api/user", userRoutes); // User
 app.use("/api/media", mediaRoutes); // Media
 app.use("/api/upvote", upvoteRoutes); // Upvote
 app.use("/api/statistics", statisticsRoutes); //Statistics
+app.use("/api/complaints", complaintRoutes); 
+app.use('/api/citizen', citizenRoutes);
+app.use('/api/authority', authorityRoutes);
+app.use('/api/admin', adminRoutes);
+
 
 // app.use("/api/upload", uploadRoutes); // Upload  Routes
 

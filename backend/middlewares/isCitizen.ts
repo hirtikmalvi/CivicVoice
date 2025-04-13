@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
-import { CustomError } from "./asyncHandler";
+import { asyncHandler, CustomError } from "./asyncHandler";
 
-export const isCitizen = (req: Request, res: Response, next: NextFunction) => {
+export const isCitizen = asyncHandler(async(req: Request, res: Response, next: NextFunction) => {
   const user = (req as any).user; 
   
   if (!user) {
@@ -13,4 +13,4 @@ export const isCitizen = (req: Request, res: Response, next: NextFunction) => {
   }
 
   next();
-};
+});
