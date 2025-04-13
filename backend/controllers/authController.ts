@@ -1,5 +1,5 @@
 import { Response } from "express";
-import { asyncHandler }from "../middlewares/asyncHandler";
+import { asyncHandler } from "../middlewares/asyncHandler";
 import { loginUser } from "../services/authService";
 import { CustomError } from "../middlewares/asyncHandler";
 import bigInt from "big-integer";
@@ -27,11 +27,9 @@ export const handleLogin = asyncHandler(async (req: any, res: Response) => {
     });
 });
 
-
 export const handleLogout = asyncHandler(async (req: any, res: Response) => {
   res
     .status(200)
     .clearCookie("token")
     .json({ success: true, message: "Logged out successfully" });
 });
-

@@ -7,33 +7,39 @@ import { users_role } from "@prisma/client";
 import { isValidUser } from "../utils/validations";
 import bigInt from "big-integer";
 
-export const registerAdmin = asyncHandler(async (req: Request, res: Response) => {
-  const { fullname, email, password } = req.body as AdminRegisterRequest;
+export const registerAdmin = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { fullname, email, password } = req.body as AdminRegisterRequest;
 
-  await isValidUser(fullname, email, password);
+    await isValidUser(fullname, email, password);
 
-  const hashed = await hashPassword(password);
+    const hashed = await hashPassword(password);
 
-  const user = await prisma.users.create({
-    data: {
-      fullname,
-      email,
-      password: hashed,
-      role: users_role.Admin,
-    },
-  });
+    const user = await prisma.users.create({
+      data: {
+        fullname,
+        email,
+        password: hashed,
+        role: users_role.Admin,
+      },
+    });
 
-  const admin = await prisma.admins.create({
-    data: { user_id: user.user_id },
-  });
+    const admin = await prisma.admins.create({
+      data: { user_id: user.user_id },
+    });
 
-  res.status(201).json({ 
-        success: true, 
-        message: "Admin registered", 
-        user: { ...user, user_id: bigInt(user.user_id)},
-        admin: { ...admin, user_id: bigInt(admin.user_id), admin_id: bigInt(admin.admin_id)}
-   });
-});
+    res.status(201).json({
+      success: true,
+      message: "Admin registered",
+      user: { ...user, user_id: bigInt(user.user_id) },
+      admin: {
+        ...admin,
+        user_id: bigInt(admin.user_id),
+        admin_id: bigInt(admin.admin_id),
+      },
+    });
+  }
+);
 
 //delete admin
 export const deleteAdmin = asyncHandler(async (req: any, res: Response) => {
@@ -44,7 +50,7 @@ export const deleteAdmin = asyncHandler(async (req: any, res: Response) => {
   }
 
   const existingUser = await prisma.users.findUnique({
-    where: { user_id: userId}
+    where: { user_id: userId },
   });
 
   if (!existingUser) {
@@ -73,7 +79,6 @@ export const deleteAdmin = asyncHandler(async (req: any, res: Response) => {
     message: "Admin profile deleted successfully",
   });
 });
-
 
 //get admin profile
 export const getAdminProfile = asyncHandler(async (req: any, res: Response) => {
@@ -109,6 +114,10 @@ export const getAdminProfile = asyncHandler(async (req: any, res: Response) => {
     success: true,
     message: "Admin profile fetched successfully",
     user: { ...user, user_id: bigInt(user.user_id) },
-    admin: { ...admin, user_id: bigInt(admin.user_id), admin_id: bigInt(admin.admin_id) },
+    admin: {
+      ...admin,
+      user_id: bigInt(admin.user_id),
+      admin_id: bigInt(admin.admin_id),
+    },
   });
 });
