@@ -17,11 +17,13 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const complaintRoutes_1 = __importDefault(require("./routes/complaintRoutes"));
 const data_1 = require("./endpoints_info/data");
-const userRoutes_1 = __importDefault(require("./routes/userRoutes"));
 const mediaRoutes_1 = __importDefault(require("./routes/mediaRoutes"));
 const upvoteRoutes_1 = __importDefault(require("./routes/upvoteRoutes"));
 const statisticsRoutes_1 = __importDefault(require("./routes/statisticsRoutes"));
 const cors_1 = __importDefault(require("cors"));
+const citizenRoutes_1 = __importDefault(require("./routes/citizenRoutes"));
+const adminRoutes_1 = __importDefault(require("./routes/adminRoutes"));
+const authorityRoutes_1 = __importDefault(require("./routes/authorityRoutes"));
 //Load environment variable
 dotenv_1.default.config();
 const app = (0, express_1.default)();
@@ -37,10 +39,13 @@ app.use((0, cors_1.default)({
 }));
 // Routes
 app.use("/api/complaints", complaintRoutes_1.default); // Complaint
-app.use("/api/user", userRoutes_1.default); // User
 app.use("/api/media", mediaRoutes_1.default); // Media
 app.use("/api/upvote", upvoteRoutes_1.default); // Upvote
 app.use("/api/statistics", statisticsRoutes_1.default); //Statistics
+app.use("/api/complaints", complaintRoutes_1.default);
+app.use('/api/citizen', citizenRoutes_1.default);
+app.use('/api/authority', authorityRoutes_1.default);
+app.use('/api/admin', adminRoutes_1.default);
 // app.use("/api/upload", uploadRoutes); // Upload  Routes
 app.get("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     res.json(data_1.apiRoutes);

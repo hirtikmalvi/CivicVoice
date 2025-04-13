@@ -21,7 +21,6 @@ export const isAuthenticated = async (
     }
 
     const decoded = jwt.verify(token, process.env.SECRET_KEY!) as JwtPayload;
-    console.log(decoded);
 
     const user = await prisma.users.findUnique({
       where: { user_id: BigInt(decoded.user_id) },
@@ -31,7 +30,7 @@ export const isAuthenticated = async (
       throw new CustomError("User not found", 404);
     }
 
-    req.user = user; // 🔐 Attach user to request
+    req.user = user; //  Attach user to request
     next();
   } catch (error: any) {
     const message =
