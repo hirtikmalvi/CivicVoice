@@ -20,6 +20,8 @@ const data_1 = require("./endpoints_info/data");
 const userRoutes_1 = __importDefault(require("./routes/userRoutes"));
 const mediaRoutes_1 = __importDefault(require("./routes/mediaRoutes"));
 const upvoteRoutes_1 = __importDefault(require("./routes/upvoteRoutes"));
+const statisticsRoutes_1 = __importDefault(require("./routes/statisticsRoutes"));
+const cors_1 = __importDefault(require("cors"));
 //Load environment variable
 dotenv_1.default.config();
 const app = (0, express_1.default)();
@@ -28,11 +30,17 @@ const PORT = process.env.PORT || 5000;
 app.use(express_1.default.json());
 app.use((0, cookie_parser_1.default)());
 app.use(express_1.default.urlencoded({ extended: true }));
+// Allow requests from your frontend
+app.use((0, cors_1.default)({
+    origin: "http://localhost:3000",
+    credentials: true, // if you're sending cookies or authorization headers
+}));
 // Routes
 app.use("/api/complaints", complaintRoutes_1.default); // Complaint
 app.use("/api/user", userRoutes_1.default); // User
 app.use("/api/media", mediaRoutes_1.default); // Media
-app.use("/api/upvote", upvoteRoutes_1.default);
+app.use("/api/upvote", upvoteRoutes_1.default); // Upvote
+app.use("/api/statistics", statisticsRoutes_1.default); //Statistics
 // app.use("/api/upload", uploadRoutes); // Upload  Routes
 app.get("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     res.json(data_1.apiRoutes);
