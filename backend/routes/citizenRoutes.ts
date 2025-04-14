@@ -3,6 +3,7 @@ import { isAuthenticated } from "../middlewares/authMiddleware";
 import {
   deleteCitizen,
   getCitizenById,
+  getCitizenByUserId,
   getCitizenProfile,
   registerCitizen,
   updateCitizenProfile,
