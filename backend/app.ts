@@ -10,6 +10,7 @@ import cors from "cors";
 import citizenRoutes from "./routes/citizenRoutes";
 import adminRoutes from "./routes/adminRoutes";
 import authorityRoutes from "./routes/authorityRoutes";
+import categoryRoutes from "./routes/categoryRoutes";
 
 //Load environment variable
 dotenv.config();
@@ -33,11 +34,11 @@ app.use("/api/complaints", complaintRoutes); // Complaint
 app.use("/api/media", mediaRoutes); // Media
 app.use("/api/upvote", upvoteRoutes); // Upvote
 app.use("/api/statistics", statisticsRoutes); //Statistics
-app.use("/api/complaints", complaintRoutes); 
-app.use('/api/citizen', citizenRoutes);
-app.use('/api/authority', authorityRoutes);
-app.use('/api/admin', adminRoutes);
-
+app.use("/api/complaints", complaintRoutes);
+app.use("/api/citizen", citizenRoutes);
+app.use("/api/authority", authorityRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/category", categoryRoutes);
 
 // app.use("/api/upload", uploadRoutes); // Upload  Routes
 
