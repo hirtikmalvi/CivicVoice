@@ -15,7 +15,6 @@ export const getUserFromToken = (): DecodedToken | null => {
   try {
     const decoded: DecodedToken = jwtDecode(token);
     const isExpired = decoded.exp * 1000 < Date.now();
-    console.log(decoded);
     if (isExpired) {
       localStorage.removeItem("token");
       return null;

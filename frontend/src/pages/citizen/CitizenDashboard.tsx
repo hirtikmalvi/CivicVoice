@@ -36,10 +36,10 @@ const CitizenDashboard: React.FC = () => {
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const fetchComplaints = async (endpoint: string) => {
+  const fetchComplaints = async (citizenId: number) => {
     setLoading(true);
     try {
-      const response = await axios.get(endpoint);
+      const response = await axios.get(`/api/complaints/citizen/${citizenId}`);
       // Ensure the response data is an array
       const complaintData = Array.isArray(response.data) ? response.data : [];
 
@@ -75,12 +75,112 @@ const CitizenDashboard: React.FC = () => {
     }
   };
 
+  const fetchCitizenId = async (userId: string | number | undefined) => {
+    try {
+      const response = await axios.get(`/api/citizen/user/${userId}`);
+      return response.data.citizen_id;
+    } catch (error) {
+      console.error("Failed to fetch citizen ID", error);
+      return null;
+    }
+  };
+
+  const handleFetchMyComplaints = async () => {
+    setLoading(true);
+    try {
+      const userId = user?.user_id;
+      const citizenId = await fetchCitizenId(userId);
+
+      if (citizenId) {
+        await fetchComplaints(citizenId);
+      } else {
+        setComplaints([]);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFetchAllComplaints = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get("/api/complaints");
+      const complaintData = Array.isArray(response.data) ? response.data : [];
+
+      const complaintsWithData = await Promise.all(
+        complaintData.map(async (complaint: Complaint) => {
+          const upvotesResponse = await axios.get(
+            `/api/complaints/${complaint.complaint_id}/upvotes/count`
+          );
+          const citizenResponse = await axios.get(
+            `/api/citizen/${complaint.citizen_id}`
+          );
+
+          const citizenName = citizenResponse.data.citizen
+            ? citizenResponse.data.citizen.fullname
+            : "N/A";
+
+          return {
+            ...complaint,
+            upvotes: upvotesResponse.data.count,
+            citizen_name: citizenName,
+          };
+        })
+      );
+
+      setComplaints(complaintsWithData);
+    } catch (error: any) {
+      console.error("Failed to load all complaints", error);
+      setComplaints([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFetchTrendingComplaints = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get("/api/statistics/complaints/trending");
+      const complaintData = Array.isArray(response.data) ? response.data : [];
+
+      const complaintsWithData = await Promise.all(
+        complaintData.map(async (complaint: Complaint) => {
+          const upvotesResponse = await axios.get(
+            `/api/complaints/${complaint.complaint_id}/upvotes/count`
+          );
+          const citizenResponse = await axios.get(
+            `/api/citizen/${complaint.citizen_id}`
+          );
+
+          const citizenName = citizenResponse.data.citizen
+            ? citizenResponse.data.citizen.fullname
+            : "N/A";
+
+          return {
+            ...complaint,
+            upvotes: upvotesResponse.data.count,
+            citizen_name: citizenName,
+          };
+        })
+      );
+
+      setComplaints(complaintsWithData);
+    } catch (error: any) {
+      console.error("Failed to load trending complaints", error);
+      setComplaints([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleFetch = () => {
-    if (view === "my")
-      fetchComplaints(`/api/complaints/citizen/${user?.user_id}`);
-    else if (view === "all") fetchComplaints("/api/complaints");
-    else if (view === "trending")
-      fetchComplaints("/api/statistics/complaints/trending");
+    if (view === "my") {
+      handleFetchMyComplaints();
+    } else if (view === "all") {
+      handleFetchAllComplaints();
+    } else if (view === "trending") {
+      handleFetchTrendingComplaints();
+    }
   };
 
   useEffect(() => {

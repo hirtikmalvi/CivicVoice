@@ -383,7 +383,7 @@ const CitizenRegister: React.FC = () => {
                         href="#"
                         onClick={(e) => {
                           e.preventDefault();
-                          navigate("/login");
+                          navigate("./login");
                         }}
                         className="text-decoration-none"
                       >

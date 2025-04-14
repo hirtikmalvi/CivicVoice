@@ -160,22 +160,20 @@ const CreateComplaint: React.FC<CreateComplaintProps> = ({
 
   const validateForm = () => {
     const errors: { [key: string]: string } = {};
-
     if (!title.trim()) errors.title = "Title is required.";
     else if (title.trim().length < 5)
       errors.title = "Title must be at least 5 characters.";
-
     if (!category) errors.category = "Please select a category.";
 
-    if (!description.trim() && !audioBlob)
+    // Modified condition: Check if either description has content or audioBlob is present
+    if (!description.trim() && !audioBlob) {
       errors.description = "Provide text or audio description.";
+    }
 
     if (mediaFiles.length > MAX_MEDIA_FILES)
       errors.mediaFiles = `Max ${MAX_MEDIA_FILES} image/video files allowed.`;
-
     if (mediaFiles.length + (audioBlob ? 1 : 0) > MAX_TOTAL_MEDIA)
       errors.mediaFiles = `Total media (image/video/audio) must not exceed ${MAX_TOTAL_MEDIA}.`;
-
     return errors;
   };
 
@@ -190,39 +188,44 @@ const CreateComplaint: React.FC<CreateComplaintProps> = ({
     }
 
     const formData = new FormData();
+    formData.append("citizen_id", "2");
     formData.append("title", title);
     formData.append("description", description);
     formData.append("category", category);
     formData.append("location", JSON.stringify(location));
     if (latitude) formData.append("latitude", latitude.toString());
     if (longitude) formData.append("longitude", longitude.toString());
-    mediaFiles.forEach((file) => formData.append("mediaFiles", file));
+
+    mediaFiles.forEach((file) => formData.append("file", file)); // Correctly using "file" for media files
+
     if (audioBlob) {
       const audioFile = new File([audioBlob], "audio.wav", {
         type: "audio/wav",
       });
-      formData.append("audio", audioFile);
+      formData.append("file", audioFile); // Using "file" for audio too
     }
-
+    console.log(formData);
     try {
-      await fetch("/api/complaints", { method: "POST", body: formData });
+      await axios.post("/api/complaints", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
       toast.success("Complaint submitted successfully!");
-      onComplaintCreated(); // Notify the parent component that a complaint was created
+      onComplaintCreated();
       onClose();
+      setTitle("");
+      setDescription("");
+      setCategory("");
+      setLocation({ latitude: null, longitude: null });
+      setLatitude(null);
+      setLongitude(null);
+      setMediaFiles([]);
+      setAudioBlob(null);
+      setFormErrors({});
     } catch (err) {
       toast.error("Something went wrong submitting complaint.");
     }
-
-    // Reset form
-    setTitle("");
-    setDescription("");
-    setCategory("");
-    setLocation({ latitude: null, longitude: null });
-    setLatitude(null);
-    setLongitude(null);
-    setMediaFiles([]);
-    setAudioBlob(null);
-    setFormErrors({});
   };
 
   return (
@@ -241,7 +244,6 @@ const CreateComplaint: React.FC<CreateComplaintProps> = ({
           {formErrors.title && (
             <div style={styles.error}>{formErrors.title}</div>
           )}
-
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
@@ -257,7 +259,6 @@ const CreateComplaint: React.FC<CreateComplaintProps> = ({
           {formErrors.category && (
             <div style={styles.error}>{formErrors.category}</div>
           )}
-
           <textarea
             placeholder="Description"
             value={description}
@@ -267,7 +268,6 @@ const CreateComplaint: React.FC<CreateComplaintProps> = ({
           {formErrors.description && (
             <div style={styles.error}>{formErrors.description}</div>
           )}
-
           <div style={styles.audioSection}>
             {audioBlob ? (
               <>
@@ -298,7 +298,6 @@ const CreateComplaint: React.FC<CreateComplaintProps> = ({
               </button>
             )}
           </div>
-
           <input
             type="file"
             accept="image/*,video/*"
@@ -309,7 +308,6 @@ const CreateComplaint: React.FC<CreateComplaintProps> = ({
           {formErrors.mediaFiles && (
             <div style={styles.error}>{formErrors.mediaFiles}</div>
           )}
-
           {mediaFiles.map((file, index) => (
             <div key={index} style={styles.mediaItem}>
               <span>{file.name}</span>
@@ -322,7 +320,6 @@ const CreateComplaint: React.FC<CreateComplaintProps> = ({
               </button>
             </div>
           ))}
-
           <button
             type="button"
             onClick={handleLocationClick}
@@ -335,7 +332,6 @@ const CreateComplaint: React.FC<CreateComplaintProps> = ({
               📍 Latitude: {location.latitude}, Longitude: {location.longitude}
             </div>
           )}
-
           <button type="submit" style={styles.submitButton}>
             Submit Complaint
           </button>
