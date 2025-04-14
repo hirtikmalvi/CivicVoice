@@ -212,11 +212,13 @@ export const getUpvoteCountOfComplaint = asyncHandler(async (req, res) => {
 // New complaint
 export const createComplaint = asyncHandler(
   async (req: Request, res: Response) => {
-    const { citizen_id, keywords, title } = req.body;
+    const { citizen_id, category, location, latitude, longitude } = req.body;
+    let { title, description } = req.body;
 
+    // Access other form data
     const files = req.files as Express.Multer.File[];
 
-    if (files.length > 5) {
+    if (files && files.length > 5) {
       throw new CustomError("You can upload a maximum of 5 files.", 400);
     }
 
@@ -224,18 +226,34 @@ export const createComplaint = asyncHandler(
     const mediaFiles: Express.Multer.File[] = [];
 
     // Separate audio and image/video files
-    for (const file of files) {
-      if (file.mimetype.startsWith("audio") && !audioFile) {
-        audioFile = file;
-      } else if (
-        file.mimetype.startsWith("image") ||
-        file.mimetype.startsWith("video")
-      ) {
-        mediaFiles.push(file);
+    if (files) {
+      for (const file of files) {
+        if (file.mimetype.startsWith("audio") && !audioFile) {
+          audioFile = file;
+        } else if (
+          file.mimetype.startsWith("image") ||
+          file.mimetype.startsWith("video")
+        ) {
+          mediaFiles.push(file);
+        }
       }
     }
 
-    let complaintText = keywords || "";
+    // Ensure citizen_id is present
+    if (!citizen_id) {
+      throw new CustomError("Citizen ID is required.", 400);
+    }
+
+    // Convert location string to JSON object
+    let locationObject;
+    try {
+      locationObject = location ? JSON.parse(location) : null;
+    } catch (error) {
+      throw new CustomError("Invalid location format. Must be a JSON string.", 400);
+    }
+
+    // Initialize complaintText with the provided description if available
+    let complaintText = description || "";
 
     // Transcribe audio if present
     if (audioFile) {
@@ -248,22 +266,26 @@ export const createComplaint = asyncHandler(
 
     // Ensure complaint text is present
     if (!complaintText) {
-      throw new CustomError("No keywords or audio provided!", 400);
+      throw new CustomError("No description or audio provided!", 400);
     }
 
-    // Generate AI-based description and title
-    const complaintDescription = await generateDescriptionFromContext(
-      complaintText
-    );
-    const complaintTitle =
-      title || (await generateTitleFromContext(complaintDescription));
+    // Generate AI-based description and title if not provided
+    if (!description) {
+      description = await generateDescriptionFromContext(complaintText);
+    }
+    if (!title) {
+      title = await generateTitleFromContext(description);
+    }
 
     // Save complaint in DB
     const complaint = await prisma.complaint.create({
       data: {
         citizen_id: BigInt(citizen_id),
-        title: complaintTitle,
-        description: complaintDescription,
+        title: title,
+        description: description,
+        category: category || null,
+        latitude: latitude ? parseFloat(latitude) : null,
+        longitude: longitude ? parseFloat(longitude) : null,
       },
     });
 
@@ -290,26 +312,28 @@ export const createComplaint = asyncHandler(
     }
 
     // Upload all image/video files to Cloudinary & store in DB
-    for (const mediaFile of mediaFiles) {
-      const uploadResult = await uploadToCloudinary(
-        mediaFile.buffer,
-        mediaFile.mimetype,
-        "complaints"
-      );
+    if (mediaFiles.length > 0) {
+      for (const mediaFile of mediaFiles) {
+        const uploadResult = await uploadToCloudinary(
+          mediaFile.buffer,
+          mediaFile.mimetype,
+          "complaints"
+        );
 
-      mediaUrls.push(uploadResult.secure_url);
+        mediaUrls.push(uploadResult.secure_url);
 
-      let mediaType = mediaFile.mimetype.startsWith("image")
-        ? "image"
-        : "video";
+        let mediaType = mediaFile.mimetype.startsWith("image")
+          ? "image"
+          : "video";
 
-      await prisma.complaint_media.create({
-        data: {
-          complaint_id: complaint.complaint_id,
-          media_url: uploadResult.secure_url,
-          media_type: mediaType,
-        },
-      });
+        await prisma.complaint_media.create({
+          data: {
+            complaint_id: complaint.complaint_id,
+            media_url: uploadResult.secure_url,
+            media_type: mediaType,
+          },
+        });
+      }
     }
 
     // Response
@@ -322,8 +346,7 @@ export const createComplaint = asyncHandler(
         mediaUrls,
       },
     });
-  }
-);
+  });
 
 // Upvote a complaint
 export const upvoteComplaint = asyncHandler(
