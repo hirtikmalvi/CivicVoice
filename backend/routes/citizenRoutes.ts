@@ -30,6 +30,9 @@ router.get("/me", isAuthenticated, isCitizen, getCitizenProfile);
 // get citizen by id
 router.get("/:citizen_id", getCitizenById);
 
+//get citizen by user_id
+router.get("/user/:user_id", getCitizenByUserId);
+
 //update profile
 router.put("/update", isAuthenticated, isCitizen, updateCitizenProfile);
 

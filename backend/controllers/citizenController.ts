@@ -173,6 +173,40 @@ export const getCitizenById = asyncHandler(
   }
 );
 
+// Get Citizen from user_id.
+export const getCitizenByUserId = asyncHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.params.user_id;
+
+    if (!userId) {
+      throw new CustomError("User ID is required", 400);
+    }
+
+    const citizen = await prisma.citizen.findUnique({
+      where: {
+        user_id: BigInt(userId),
+      },
+      include: {
+        users: true,
+      },
+    });
+
+    if (!citizen) {
+      throw new CustomError("Citizen not found for given user ID", 404);
+    }
+
+    res.status(200).json({
+      message: "Citizen fetched successfully",
+      citizen: {
+        ...citizen,
+        ...citizen.users,
+        citizen_id: bigInt(citizen.citizen_id),
+        user_id: bigInt(citizen.user_id),
+      },
+    });
+  }
+);
+
 //update citizen
 
 export const updateCitizenProfile = asyncHandler(
