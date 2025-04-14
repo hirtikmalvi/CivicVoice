@@ -1,27 +1,30 @@
+// CitizenDashboard.tsx
 import React, { useState, useEffect } from "react";
 import {
   Container,
   Button,
-  Row,
-  Col,
   Navbar,
   Nav,
   Table,
   Badge,
   Modal,
-  Form,
+  Spinner,
 } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import { getUserFromToken } from "../../hooks/useAuth";
-import axios from "../../api/axiosInstance"; // Import the axiosInstance
+import axios from "../../api/axiosInstance";
+import CreateComplaint, {
+  CreateComplaintProps,
+} from "../citizen/CreateComplaint";
 
 interface Complaint {
   complaint_id: number;
   title: string;
   status: string;
   upvotes: number;
-  citizen_id: string;
+  citizen_name: string;
   created_at: string;
+  citizen_id: number;
 }
 
 const CitizenDashboard: React.FC = () => {
@@ -30,57 +33,58 @@ const CitizenDashboard: React.FC = () => {
   const [view, setView] = useState<"my" | "all" | "trending">("my");
   const [showProfile, setShowProfile] = useState(false);
   const [showComplaintModal, setShowComplaintModal] = useState(false);
-  const [newComplaint, setNewComplaint] = useState({
-    title: "",
-    status: "Pending",
-  });
-  const [allComplaints, setAllComplaints] = useState<Complaint[]>([]);
+  const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const fetchComplaints = async () => {
+  const fetchComplaints = async (endpoint: string) => {
     setLoading(true);
     try {
-      const response = await axios.get("/api/complaints/");
-      setAllComplaints(Array.isArray(response.data) ? response.data : []);
-    } catch (err) {
-      console.error("Error fetching complaints:", err);
-      setAllComplaints([]);
+      const response = await axios.get(endpoint);
+      // Ensure the response data is an array
+      const complaintData = Array.isArray(response.data) ? response.data : [];
+
+      // Fetch additional data for each complaint
+      const complaintsWithData = await Promise.all(
+        complaintData.map(async (complaint: Complaint) => {
+          const upvotesResponse = await axios.get(
+            `/api/complaints/${complaint.complaint_id}/upvotes/count`
+          );
+          const citizenResponse = await axios.get(
+            `/api/citizen/${complaint.citizen_id}`
+          ); // Use citizen_id from complaint
+
+          // Extract citizen name from the nested 'users' object
+          const citizenName = citizenResponse.data.citizen
+            ? citizenResponse.data.citizen.fullname
+            : "N/A";
+
+          return {
+            ...complaint,
+            upvotes: upvotesResponse.data.count,
+            citizen_name: citizenName,
+          };
+        })
+      );
+
+      setComplaints(complaintsWithData);
+    } catch (error: any) {
+      console.error("Failed to load complaints", error);
+      setComplaints([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // const getCitizenById = async (citizen_id: string): Promise<any> => {
-  //   try {
-  //     const response = await axios.get(`/api/citizen/${citizen_id}`); // Use relative path
-  //     return response.data.citizen.fullname as string;
-  //   } catch (err) {
-  //     console.error(err);
-  //   }
-  // };
-
-  const fetchUserComplaints = async () => {
-    if (!user?.id) return;
-    setLoading(true);
-    try {
-      const response = await axios.get(
-        `/api/complaints/citizen/${user.id}` // Use relative path
-      );
-      setAllComplaints(Array.isArray(response.data) ? response.data : []);
-    } catch (err) {
-      console.error("Error fetching user complaints:", err);
-      setAllComplaints([]);
-    } finally {
-      setLoading(false);
-    }
+  const handleFetch = () => {
+    if (view === "my")
+      fetchComplaints(`/api/complaints/citizen/${user?.user_id}`);
+    else if (view === "all") fetchComplaints("/api/complaints");
+    else if (view === "trending")
+      fetchComplaints("/api/statistics/complaints/trending");
   };
 
   useEffect(() => {
-    if (view === "my") {
-      fetchUserComplaints();
-    } else if (view === "all") {
-      fetchComplaints();
-    }
+    handleFetch();
   }, [view]);
 
   const handleLogout = () => {
@@ -88,43 +92,36 @@ const CitizenDashboard: React.FC = () => {
     navigate("/login");
   };
 
-  const handleUpvote = (id: number) => {
-    setAllComplaints((prev) =>
-      prev.map((c) =>
-        c.complaint_id === id ? { ...c, upvotes: c.upvotes + 1 } : c
-      )
-    );
-  };
-
-  const handleComplaintSubmit = () => {
-    const newId = allComplaints.length + 1;
-    const newEntry: Complaint = {
-      complaint_id: newId,
-      title: newComplaint.title,
-      status: newComplaint.status,
-      upvotes: 0,
-      citizen_id: user?.name || "anonymous",
-      created_at: new Date().toISOString(),
-    };
-
-    setAllComplaints([...allComplaints, newEntry]);
-    setNewComplaint({ title: "", status: "Pending" });
+  const handleComplaintCreated = () => {
     setShowComplaintModal(false);
+    handleFetch();
   };
 
-  const trendingComplaints = [...allComplaints]
-    .sort((a, b) => b.upvotes - a.upvotes)
-    .slice(0, 3);
+  const handleUpvote = async (complaintId: number, citizenId: number) => {
+    try {
+      await axios.post(`/api/complaints/${complaintId}/upvote`, {
+        citizen_id: citizenId,
+      });
+      // Optimistically update the upvotes count
+      setComplaints((prev) =>
+        prev.map((c) =>
+          c.complaint_id === complaintId ? { ...c, upvotes: c.upvotes + 1 } : c
+        )
+      );
+    } catch (err) {
+      console.error("Failed to upvote", err);
+    }
+  };
 
   const renderComplaints = (complaints: Complaint[]) => (
-    <Table striped bordered hover responsive>
+    <Table striped bordered hover responsive className="mt-3">
       <thead>
         <tr>
           <th>ID</th>
           <th>Title</th>
           <th>Status</th>
           <th>Upvotes</th>
-          <th>Created By</th>
+          <th>Citizen</th>
           <th>Created At</th>
           <th>Action</th>
         </tr>
@@ -147,15 +144,15 @@ const CitizenDashboard: React.FC = () => {
                 </Badge>
               </td>
               <td>{c.upvotes}</td>
-              {/* <td>{getCitizenById(c.citizen_id)}</td> */}
+              <td>{c.citizen_name || "N/A"}</td>
               <td>{new Date(c.created_at).toISOString().split("T")[0]}</td>
               <td>
                 <Button
                   size="sm"
                   variant="outline-primary"
-                  onClick={() => handleUpvote(c.complaint_id)}
+                  onClick={() => handleUpvote(c.complaint_id, c.citizen_id)}
                 >
-                  Upvote
+                  👍 Upvote
                 </Button>
               </td>
             </tr>
@@ -167,13 +164,11 @@ const CitizenDashboard: React.FC = () => {
 
   return (
     <>
-      <Navbar
-        bg="light"
-        expand="lg"
-        className="px-4 d-flex justify-content-between"
-      >
-        <div className="d-flex align-items-center gap-3">
-          <Nav>
+      <Navbar expand="lg" className="px-4 bg-light shadow-sm">
+        <Navbar.Brand>CivicVoice</Navbar.Brand>
+        <Navbar.Toggle />
+        <Navbar.Collapse className="justify-content-between">
+          <Nav className="me-auto">
             <Nav.Link onClick={() => setView("my")} active={view === "my"}>
               My Complaints
             </Nav.Link>
@@ -187,100 +182,54 @@ const CitizenDashboard: React.FC = () => {
               Trending
             </Nav.Link>
           </Nav>
-        </div>
-        <div className="d-flex gap-3 align-items-center">
-          <Button variant="primary" onClick={() => setShowComplaintModal(true)}>
-            + Create Complaint
-          </Button>
-          <Button variant="outline-danger" onClick={handleLogout}>
-            Logout
-          </Button>
-        </div>
+          <div className="d-flex gap-2">
+            <Button
+              variant="outline-primary"
+              onClick={() => setShowComplaintModal(true)}
+            >
+              + Create
+            </Button>
+            <Button variant="outline-danger" onClick={handleLogout}>
+              Logout
+            </Button>
+          </div>
+        </Navbar.Collapse>
       </Navbar>
 
       <Container className="mt-4">
-        <Row>
-          <Col>
-            {loading ? (
-              <p>Loading...</p>
-            ) : (
-              <>
-                {view === "my" && (
-                  <>
-                    <h3>My Complaints</h3>
-                    {renderComplaints(allComplaints)}
-                  </>
-                )}
-                {view === "all" && (
-                  <>
-                    <h3>All Complaints</h3>
-                    {renderComplaints(allComplaints)}
-                  </>
-                )}
-                {view === "trending" && (
-                  <>
-                    <h3>🔥 Trending Complaints</h3>
-                    {renderComplaints(trendingComplaints)}
-                  </>
-                )}
-              </>
-            )}
-          </Col>
-        </Row>
+        {loading ? (
+          <div className="text-center my-4">
+            <Spinner animation="border" variant="primary" />
+          </div>
+        ) : (
+          <>
+            <h4 className="mb-3">
+              {view === "my"
+                ? "My Complaints"
+                : view === "all"
+                ? "All Complaints"
+                : "🔥 Trending Complaints"}
+            </h4>
+            {renderComplaints(complaints)}
+          </>
+        )}
       </Container>
-
-      {/* Profile Modal */}
-      <Modal show={showProfile} onHide={() => setShowProfile(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>👤 Profile</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p>
-            <strong>Name:</strong> {user?.name}
-          </p>
-          <p>
-            <strong>Email:</strong> {user?.email}
-          </p>
-          <p>
-            <strong>Role:</strong> {user?.role}
-          </p>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowProfile(false)}>
-            Close
-          </Button>
-        </Modal.Footer>
-      </Modal>
 
       {/* Create Complaint Modal */}
       <Modal
         show={showComplaintModal}
         onHide={() => setShowComplaintModal(false)}
+        size="lg"
       >
         <Modal.Header closeButton>
           <Modal.Title>Create Complaint</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {/* <CreateComplaint
-          onClose={function (): void {
-            throw new Error("Function not implemented.");
-          }}
-          onComplaintCreated={function (): void {
-            throw new Error("Function not implemented.");
-          }}
-        ></CreateComplaint> */}
+          <CreateComplaint
+            onClose={() => setShowComplaintModal(false)}
+            onComplaintCreated={handleComplaintCreated}
+          />
         </Modal.Body>
-        <Modal.Footer>
-          <Button
-            variant="secondary"
-            onClick={() => setShowComplaintModal(false)}
-          >
-            Cancel
-          </Button>
-          <Button variant="success" onClick={handleComplaintSubmit}>
-            Submit
-          </Button>
-        </Modal.Footer>
       </Modal>
     </>
   );

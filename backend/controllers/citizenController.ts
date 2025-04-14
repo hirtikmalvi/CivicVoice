@@ -198,10 +198,23 @@ export const getCitizenByUserId = asyncHandler(
     res.status(200).json({
       message: "Citizen fetched successfully",
       citizen: {
-        ...citizen,
-        ...citizen.users,
         citizen_id: bigInt(citizen.citizen_id),
         user_id: bigInt(citizen.user_id),
+        adhar_number: citizen.adhar_number,
+        phone_number: citizen.phone_number,
+        city: citizen.city,
+        state: citizen.state,
+        pincode: citizen.pincode,
+        address: citizen.address,
+        latitude: citizen.latitude,
+        longitude: citizen.longitude,
+        created_at: citizen.created_at,
+        updated_at: citizen.updated_at,
+        fullname: citizen.users.fullname,
+        email: citizen.users.email,
+        role: citizen.users.role,
+        user_created_at: citizen.users.created_at,
+        user_updated_at: citizen.users.updated_at,
       },
     });
   }
