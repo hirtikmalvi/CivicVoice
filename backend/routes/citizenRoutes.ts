@@ -28,7 +28,7 @@ router.delete("/delete", isAuthenticated, isCitizen, deleteCitizen);
 router.get("/me", isAuthenticated, isCitizen, getCitizenProfile);
 
 // get citizen by id
-router.get("/:citizen_id", isAuthenticated, isCitizen, getCitizenById);
+router.get("/:citizen_id", getCitizenById);
 
 //update profile
 router.put("/update", isAuthenticated, isCitizen, updateCitizenProfile);
