@@ -249,7 +249,10 @@ export const createComplaint = asyncHandler(
     try {
       locationObject = location ? JSON.parse(location) : null;
     } catch (error) {
-      throw new CustomError("Invalid location format. Must be a JSON string.", 400);
+      throw new CustomError(
+        "Invalid location format. Must be a JSON string.",
+        400
+      );
     }
 
     // Initialize complaintText with the provided description if available
@@ -346,7 +349,8 @@ export const createComplaint = asyncHandler(
         mediaUrls,
       },
     });
-  });
+  }
+);
 
 // Upvote a complaint
 export const upvoteComplaint = asyncHandler(
