@@ -46,7 +46,7 @@ const CreateComplaint: React.FC<CreateComplaintProps> = ({
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const categories: Category[] = (await axios.get(`api/category/all`))
+        const categories: Category[] = (await axios.get(`/api/category/all`))
           .data;
         setCategories(categories || []);
       } catch (err) {
@@ -165,7 +165,6 @@ const CreateComplaint: React.FC<CreateComplaintProps> = ({
       errors.title = "Title must be at least 5 characters.";
     if (!category) errors.category = "Please select a category.";
 
-    // Modified condition: Check if either description has content or audioBlob is present
     if (!description.trim() && !audioBlob) {
       errors.description = "Provide text or audio description.";
     }
@@ -196,21 +195,38 @@ const CreateComplaint: React.FC<CreateComplaintProps> = ({
     if (latitude) formData.append("latitude", latitude.toString());
     if (longitude) formData.append("longitude", longitude.toString());
 
-    mediaFiles.forEach((file) => formData.append("file", file)); // Correctly using "file" for media files
+    // Append media files
+    mediaFiles.forEach((file) => {
+      formData.append("file", file);
+    });
 
+    // Append audio blob if it exists
     if (audioBlob) {
-      const audioFile = new File([audioBlob], "audio.wav", {
-        type: "audio/wav",
-      });
-      formData.append("file", audioFile); // Using "file" for audio too
+      try {
+        const audioFile = new File([audioBlob], "audio.wav", {
+          type: "audio/wav",
+        });
+        formData.append("file", audioFile);
+        console.log("Audio file appended to FormData:", audioFile); // Debugging line
+      } catch (audioError) {
+        console.error("Error creating audio file:", audioError);
+        toast.error("Failed to prepare audio file.");
+        return;
+      }
     }
-    console.log(formData);
+
+    // Log FormData contents for debugging
+    for (const pair of formData.entries()) {
+      console.log(pair[0] + ", " + pair[1]);
+    }
+
     try {
-      await axios.post("/api/complaints", formData, {
+      const response = await axios.post("/api/complaints", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       });
+
       toast.success("Complaint submitted successfully!");
       onComplaintCreated();
       onClose();
@@ -223,7 +239,12 @@ const CreateComplaint: React.FC<CreateComplaintProps> = ({
       setMediaFiles([]);
       setAudioBlob(null);
       setFormErrors({});
-    } catch (err) {
+    } catch (error: any) {
+      console.error("API Error:", error);
+      if (error.response) {
+        console.error("Response Data:", error.response.data);
+        console.error("Response Status:", error.response.status);
+      }
       toast.error("Something went wrong submitting complaint.");
     }
   };
