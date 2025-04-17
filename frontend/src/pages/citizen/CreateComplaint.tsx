@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import axios from "../../api/axiosInstance";
+import { getUserFromToken } from "../../hooks/useAuth";
 
 export interface CreateComplaintProps {
   onClose: () => void;
@@ -24,6 +25,7 @@ const CreateComplaint: React.FC<CreateComplaintProps> = ({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
+  const [citizen_id, setCitizen_id] = useState("");
   const [location, setLocation] = useState<{
     latitude: number | null;
     longitude: number | null;
@@ -54,6 +56,20 @@ const CreateComplaint: React.FC<CreateComplaintProps> = ({
       }
     };
 
+    const fetchCitizenId = async () => {
+      try {
+        const user = getUserFromToken();
+        const userId = user?.user_id;
+
+        const response = await axios.get(`/api/citizen/user/${userId}`);
+        console.log("Response: ", response);
+        setCitizen_id(response.data.citizen.citizen_id);
+      } catch (error) {
+        console.error("Failed to fetch citizen ID", error);
+        return null;
+      }
+    };
+    fetchCitizenId()
     fetchCategories();
   }, []);
 
@@ -187,7 +203,7 @@ const CreateComplaint: React.FC<CreateComplaintProps> = ({
     }
 
     const formData = new FormData();
-    formData.append("citizen_id", "2");
+    formData.append("citizen_id", citizen_id);
     formData.append("title", title);
     formData.append("description", description);
     formData.append("category", category);

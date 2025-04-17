@@ -78,7 +78,7 @@ const CitizenDashboard: React.FC = () => {
   const fetchCitizenId = async (userId: string | number | undefined) => {
     try {
       const response = await axios.get(`/api/citizen/user/${userId}`);
-      return response.data.citizen_id;
+      return response.data.citizen.citizen_id;
     } catch (error) {
       console.error("Failed to fetch citizen ID", error);
       return null;
@@ -90,7 +90,6 @@ const CitizenDashboard: React.FC = () => {
     try {
       const userId = user?.user_id;
       const citizenId = await fetchCitizenId(userId);
-
       if (citizenId) {
         await fetchComplaints(citizenId);
       } else {

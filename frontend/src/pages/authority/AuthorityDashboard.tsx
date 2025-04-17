@@ -9,8 +9,8 @@ import {
   Form,
 } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import { getUserFromToken } from "../hooks/useAuth";
-import ProfileCard from "./ProfileCard";
+import { getUserFromToken } from "../../hooks/useAuth";
+import ProfileCard from "../../components/ProfileCard";
 
 interface Complaint {
   id: number;
@@ -26,9 +26,27 @@ const AuthorityDashboard: React.FC = () => {
   const [searchText, setSearchText] = useState("");
 
   const [allComplaints, setAllComplaints] = useState<Complaint[]>([
-    { id: 1, title: "Broken pipe", status: "Pending", upvotes: 5, createdBy: "user1" },
-    { id: 2, title: "No streetlights", status: "In Progress", upvotes: 7, createdBy: "user2" },
-    { id: 3, title: "Garbage overflow", status: "Resolved", upvotes: 4, createdBy: "user3" },
+    {
+      id: 1,
+      title: "Broken pipe",
+      status: "Pending",
+      upvotes: 5,
+      createdBy: "user1",
+    },
+    {
+      id: 2,
+      title: "No streetlights",
+      status: "In Progress",
+      upvotes: 7,
+      createdBy: "user2",
+    },
+    {
+      id: 3,
+      title: "Garbage overflow",
+      status: "Resolved",
+      upvotes: 4,
+      createdBy: "user3",
+    },
   ]);
 
   const handleLogout = () => {
@@ -37,10 +55,12 @@ const AuthorityDashboard: React.FC = () => {
   };
 
   const handleStatusChange = (id: number, newStatus: string) => {
-    setAllComplaints(prev => prev.map(c => c.id === id ? { ...c, status: newStatus } : c));
+    setAllComplaints((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, status: newStatus } : c))
+    );
   };
 
-  const filteredComplaints = allComplaints.filter(c =>
+  const filteredComplaints = allComplaints.filter((c) =>
     c.title.toLowerCase().includes(searchText.toLowerCase())
   );
 
@@ -81,7 +101,15 @@ const AuthorityDashboard: React.FC = () => {
                 <td>{c.id}</td>
                 <td>{c.title}</td>
                 <td>
-                  <Badge bg={c.status === "Resolved" ? "success" : c.status === "In Progress" ? "info" : "warning"}>
+                  <Badge
+                    bg={
+                      c.status === "Resolved"
+                        ? "success"
+                        : c.status === "In Progress"
+                        ? "info"
+                        : "warning"
+                    }
+                  >
                     {c.status}
                   </Badge>
                 </td>
