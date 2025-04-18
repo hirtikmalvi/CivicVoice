@@ -12,59 +12,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.loginUser = exports.registerUser = void 0;
+exports.loginUser = void 0;
 const prismaClient_1 = __importDefault(require("../utils/prismaClient"));
-const client_1 = require("@prisma/client");
 const hashPassword_1 = require("../utils/hashPassword");
 const jwtUtils_1 = require("../utils/jwtUtils");
-const validations_1 = require("../utils/validations");
 const asyncHandler_1 = require("../middlewares/asyncHandler");
-const registerUser = (data) => __awaiter(void 0, void 0, void 0, function* () {
-    // Validations for user
-    (0, validations_1.isValidUser)(data);
-    const { fullname, email, password, role, role_based_data } = data;
-    // Check if email already exists
-    const foundUser = yield prismaClient_1.default.users.findFirst({ where: { email } });
-    if (foundUser) {
-        throw new asyncHandler_1.CustomError("Email already exists", 409);
-    }
-    if (role === client_1.users_role.Citizen)
-        yield (0, validations_1.isValidCitizen)(role_based_data);
-    else if (role === client_1.users_role.Authority)
-        (0, validations_1.isValidAuthority)(role_based_data);
-    const hashedPassword = yield (0, hashPassword_1.hashPassword)(password);
-    // Creating User
-    const newUser = yield prismaClient_1.default.users.create({
-        data: {
-            fullname,
-            email,
-            password: hashedPassword,
-            role
-        }
-    });
-    // Creation of role-based entries
-    if (role === client_1.users_role.Citizen) {
-        yield prismaClient_1.default.citizen.create({
-            data: Object.assign({ user_id: newUser.user_id }, role_based_data)
-        });
-    }
-    else if (role === client_1.users_role.Authority) {
-        (0, validations_1.isValidAuthority)(role_based_data);
-        yield prismaClient_1.default.authority.create({
-            data: Object.assign({ user_id: newUser.user_id }, role_based_data)
-        });
-    }
-    else if (role === client_1.users_role.Admin) {
-        yield prismaClient_1.default.admins.create({
-            data: { user_id: newUser.user_id }
-        });
-    }
-    else {
-        throw new asyncHandler_1.CustomError("Invalid role provided", 400);
-    }
-    return newUser;
-});
-exports.registerUser = registerUser;
 // For Login
 const loginUser = (data) => __awaiter(void 0, void 0, void 0, function* () {
     const { email, password } = data;

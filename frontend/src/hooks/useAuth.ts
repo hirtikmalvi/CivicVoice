@@ -1,7 +1,7 @@
 import { jwtDecode } from "jwt-decode";
 
 interface DecodedToken {
-  id: number;
+  user_id: number;
   name: string;
   email: string;
   role: "Citizen" | "admin" | "Authority";
@@ -15,7 +15,6 @@ export const getUserFromToken = (): DecodedToken | null => {
   try {
     const decoded: DecodedToken = jwtDecode(token);
     const isExpired = decoded.exp * 1000 < Date.now();
-
     if (isExpired) {
       localStorage.removeItem("token");
       return null;

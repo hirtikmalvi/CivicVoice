@@ -22,7 +22,6 @@ const hashPassword = (password) => __awaiter(void 0, void 0, void 0, function* (
         return yield bcryptjs_1.default.hash(password, salt);
     }
     catch (error) {
-        console.error("Error while hashing password:", error);
         throw new asyncHandler_1.CustomError("Error hashing password", 500);
     }
 });
@@ -32,7 +31,6 @@ const comparePassword = (password, hashedPassword) => __awaiter(void 0, void 0, 
         return yield bcryptjs_1.default.compare(password, hashedPassword);
     }
     catch (error) {
-        console.error("Error while comparing password:", error);
         throw new asyncHandler_1.CustomError("Error comparing password", 500);
     }
 });

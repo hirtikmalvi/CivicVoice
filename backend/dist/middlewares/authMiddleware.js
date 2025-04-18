@@ -23,14 +23,13 @@ const isAuthenticated = (req, res, next) => __awaiter(void 0, void 0, void 0, fu
             throw new asyncHandler_1.CustomError("Not authenticated. Please login.", 401);
         }
         const decoded = jsonwebtoken_1.default.verify(token, process.env.SECRET_KEY);
-        console.log(decoded);
         const user = yield prismaClient_1.default.users.findUnique({
             where: { user_id: BigInt(decoded.user_id) },
         });
         if (!user) {
             throw new asyncHandler_1.CustomError("User not found", 404);
         }
-        req.user = user; // 🔐 Attach user to request
+        req.user = user; //  Attach user to request
         next();
     }
     catch (error) {
