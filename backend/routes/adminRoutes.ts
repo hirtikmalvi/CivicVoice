@@ -20,7 +20,7 @@ router.post("/login", handleLogin);
 router.post("/logout", handleLogout);
 
 // get all users
-router.get("/all/citizens", isAuthenticated, getAllCitizens);
+router.get("/all/citizens", getAllCitizens);
 
 //delete
 router.delete("/delete", isAuthenticated, isAdmin, deleteAdmin);
