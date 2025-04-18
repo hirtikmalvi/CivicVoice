@@ -567,3 +567,56 @@ export const updateComplaintAuthority = asyncHandler(
     });
   }
 );
+
+// Trending
+export const getTrendingComplaints = asyncHandler(
+  async (req: Request, res: Response) => {
+    const now = new Date();
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 1 day ago
+
+    const recentComplaints = await prisma.complaint.findMany({
+      where: {
+        created_at: {
+          gte: oneDayAgo,
+          lte: now,
+        },
+      },
+      include: {
+        citizen: {
+          include: {
+            users: true,
+          },
+        },
+        _count: {
+          select: {
+            upvoted_complaint: true,
+          },
+        },
+      },
+    });
+
+    if (recentComplaints.length === 0) {
+      return res.status(200).json([]);
+    }
+
+    const totalUpvotes = recentComplaints.reduce(
+      (sum, c) => sum + c._count.upvoted_complaint,
+      0
+    );
+    const averageUpvotes = totalUpvotes / recentComplaints.length;
+
+    const trending = recentComplaints
+      .filter((c) => c._count.upvoted_complaint > averageUpvotes)
+      .map((c) => ({
+        complaint_id: Number(c.complaint_id),
+        title: c.title,
+        status: c.status,
+        upvotes: c._count.upvoted_complaint,
+        citizen_name: c.citizen?.users?.fullname || "Unknown",
+        created_at: c.created_at,
+        citizen_id: Number(c.citizen_id),
+      }));
+
+    return res.status(200).json(trending);
+  }
+);

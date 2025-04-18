@@ -11,6 +11,7 @@ import {
   getComplaintsByCategory,
   getComplaintsByCitizen,
   getComplaintsByStatus,
+  getTrendingComplaints,
   getUpvoteCountOfComplaint,
   removeUpvoteFromComplaint,
   updateComplaint,
@@ -84,5 +85,8 @@ router.delete("/:complaintId/media/:mediaId", deleteMediaFromComplaint);
 
 // Remove an upvote from a complaint by citizen
 router.delete("/:complaintId/upvote/:citizenId", removeUpvoteFromComplaint);
+
+// Trending
+router.get("/trending", getTrendingComplaints);
 
 export default router;
