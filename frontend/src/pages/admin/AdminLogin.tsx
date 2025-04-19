@@ -50,7 +50,6 @@ const AdminLogin: React.FC = () => {
 
       // Make API request
       const response = await axios.post("/api/admin/login", {
-        // API endpoint for admin login
         email: form.email,
         password: form.password,
       });
@@ -131,6 +130,19 @@ const AdminLogin: React.FC = () => {
                   >
                     {isSubmitting ? "Logging in..." : "Login"}
                   </button>
+                </div>
+
+                <div className="text-center mt-3">
+                  {/* <a
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      navigate("/admin/forgot-password");
+                    }}
+                    className="text-decoration-none"
+                  >
+                    Forgot password?
+                  </a> */}
                 </div>
               </form>
             </div>

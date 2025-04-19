@@ -38,6 +38,14 @@ function App() {
           }
         />
         <Route
+          path="/citizen/complaint/:complaintId"
+          element={
+            <ProtectedRoute>
+              <Complaint />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/citizen/profile"
           element={
             <ProtectedRoute>

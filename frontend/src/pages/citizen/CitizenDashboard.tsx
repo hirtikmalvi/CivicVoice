@@ -16,6 +16,7 @@ import axios from "../../api/axiosInstance";
 import CreateComplaint, {
   CreateComplaintProps,
 } from "../citizen/CreateComplaint";
+import { Link } from "react-router-dom";
 
 interface Complaint {
   complaint_id: number;
@@ -139,7 +140,7 @@ const CitizenDashboard: React.FC = () => {
   const handleFetchTrendingComplaints = async () => {
     setLoading(true);
     try {
-      const response = await axios.get("/api/statistics/complaints/trending");
+      const response = await axios.get("/api/complaints/trending");
       const complaintData = Array.isArray(response.data) ? response.data : [];
 
       const complaintsWithData = await Promise.all(
@@ -236,7 +237,14 @@ const CitizenDashboard: React.FC = () => {
           complaints.map((c) => (
             <tr key={c.complaint_id}>
               <td>{c.complaint_id}</td>
-              <td>{c.title}</td>
+              <td>
+                <Link
+                  to={`/citizen/complaint/${c.complaint_id}`}
+                  className="text-decoration-none"
+                >
+                  {c.title}
+                </Link>
+              </td>
               <td>
                 <Badge bg={c.status === "Resolved" ? "success" : "warning"}>
                   {c.status}

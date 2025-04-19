@@ -1,4 +1,7 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import axios from "../../api/axiosInstance"; // adjust if your path is different
+
 interface Media {
   media_id: string;
   complaint_id: string;
@@ -22,54 +25,35 @@ interface ComplaintData {
   updated_at: string;
 }
 
-const ComplaintDetailExample: React.FC = () => {
-  const complaint: ComplaintData = {
-    complaint_id: "349",
-    citizen_id: "17",
-    title: "Potholes on Road",
-    description: "There is a huge pothole on Nikol-Naroda Road, Ahmedabad.",
-    status: "Pending",
-    category: "Potholes___Road_Damage",
-    media_url: null,
-    latitude: 23.0326272,
-    longitude: 72.630272,
-    authority_id: null,
-    created_at: "2025-04-16T20:00:53.239Z",
-    updated_at: "2025-04-16T20:00:53.239Z",
-  };
+const Complaint: React.FC = () => {
+  const { complaintId } = useParams<{ complaintId: string }>();
+  const [complaint, setComplaint] = useState<ComplaintData | null>(null);
+  const [media, setMedia] = useState<Media[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Hardcoded media data
-  const media: Media[] = [
-    {
-      media_id: "52",
-      complaint_id: "349",
-      media_url:
-        "https://res.cloudinary.com/disxth1ow/image/upload/v1744833654/complaints/uofresfiylinfqnocxnk.jpg",
-      media_type: "image",
-      created_at: "2025-04-16T20:00:54.691Z",
-    },
-    {
-      media_id: "53",
-      complaint_id: "349",
-      media_url:
-        "https://res.cloudinary.com/disxth1ow/image/upload/v1744833655/complaints/vyksy5ji3xp8r15yibux.jpg",
-      media_type: "image",
-      created_at: "2025-04-16T20:00:55.569Z",
-    },
-  ];
+  useEffect(() => {
+    const fetchComplaint = async () => {
+      try {
+        const response = await axios.get(`/api/complaints/${complaintId}`);
+        console.log(response.data);
+        setComplaint(response.data);
+        setMedia(response.data.media || []);
+      } catch (error) {
+        console.error("Failed to fetch complaint details", error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Format the category by replacing underscores with spaces
-  const formatCategory = (category: string): string => {
-    return category.replace(/_/g, " ");
-  };
+    fetchComplaint();
+  }, [complaintId]);
 
-  // Format date to a more readable format
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleString();
-  };
+  const formatCategory = (category: string): string =>
+    category.replace(/_/g, " ");
 
-  // Get the badge color based on status
+  const formatDate = (dateString: string): string =>
+    new Date(dateString).toLocaleString();
+
   const getStatusBadgeClass = (status: string): string => {
     switch (status) {
       case "Resolved":
@@ -78,16 +62,36 @@ const ComplaintDetailExample: React.FC = () => {
         return "bg-info text-dark";
       case "Rejected":
         return "bg-danger";
+      case "Escalated":
+        return "bg-primary";
       default:
         return "bg-warning text-dark";
     }
   };
 
-  // Open map in new tab with the location
-  const viewOnMap = (): void => {
-    const mapUrl = `https://www.google.com/maps?q=${complaint.latitude},${complaint.longitude}`;
-    window.open(mapUrl, "_blank");
+  const viewOnMap = () => {
+    if (complaint)
+      window.open(
+        `https://www.google.com/maps?q=${complaint.latitude},${complaint.longitude}`,
+        "_blank"
+      );
   };
+
+  if (loading) {
+    return (
+      <div className="container py-5 text-center">
+        <h5>Loading complaint details...</h5>
+      </div>
+    );
+  }
+
+  if (!complaint) {
+    return (
+      <div className="container py-5 text-center text-danger">
+        <h5>Complaint not found.</h5>
+      </div>
+    );
+  }
 
   return (
     <div className="container py-4">
@@ -218,4 +222,4 @@ const ComplaintDetailExample: React.FC = () => {
   );
 };
 
-export default ComplaintDetailExample;
+export default Complaint;

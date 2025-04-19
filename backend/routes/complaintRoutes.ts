@@ -36,6 +36,9 @@ router.route("/").get(getComplaints);
 // Get Complaints By CitizenId
 router.route("/citizen/:citizenId").get(getComplaintsByCitizen);
 
+// Trending
+router.route("/trending").get(getTrendingComplaints);
+
 // Get Complaint By Complaint ID
 router.route("/:complaintId").get(getComplaintById);
 
@@ -85,8 +88,5 @@ router.delete("/:complaintId/media/:mediaId", deleteMediaFromComplaint);
 
 // Remove an upvote from a complaint by citizen
 router.delete("/:complaintId/upvote/:citizenId", removeUpvoteFromComplaint);
-
-// Trending
-router.get("/trending", getTrendingComplaints);
 
 export default router;

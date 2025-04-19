@@ -604,9 +604,8 @@ export const getTrendingComplaints = asyncHandler(
       0
     );
     const averageUpvotes = totalUpvotes / recentComplaints.length;
-
     const trending = recentComplaints
-      .filter((c) => c._count.upvoted_complaint > averageUpvotes)
+      .filter((c) => c._count.upvoted_complaint)
       .map((c) => ({
         complaint_id: Number(c.complaint_id),
         title: c.title,
