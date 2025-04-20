@@ -46,7 +46,7 @@ function App() {
           }
         />
         <Route
-          path="/citizen/profile"
+          path="/citizen/profile/:citizenId"
           element={
             <ProtectedRoute>
               <CitizenProfile />

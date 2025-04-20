@@ -1,4 +1,3 @@
-// CitizenDashboard.tsx
 import React, { useState, useEffect } from "react";
 import {
   Container,
@@ -9,13 +8,12 @@ import {
   Badge,
   Modal,
   Spinner,
+  Dropdown,
 } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import { getUserFromToken } from "../../hooks/useAuth";
 import axios from "../../api/axiosInstance";
-import CreateComplaint, {
-  CreateComplaintProps,
-} from "../citizen/CreateComplaint";
+import CreateComplaint from "../citizen/CreateComplaint";
 import { Link } from "react-router-dom";
 
 interface Complaint {
@@ -28,16 +26,23 @@ interface Complaint {
   citizen_id: number;
 }
 
+interface CitizenInfo {
+  citizen_id: string;
+  user_id: string;
+  fullName: string;
+}
+
 const CitizenDashboard: React.FC = () => {
   const user = getUserFromToken();
   const navigate = useNavigate();
   const [view, setView] = useState<"my" | "all" | "trending">("my");
-  const [showProfile, setShowProfile] = useState(false);
   const [showComplaintModal, setShowComplaintModal] = useState(false);
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(false);
+  const [citizenInfo, setCitizenInfo] = useState<CitizenInfo | null>(null);
+  // const [citizen, setCitizen] = useState
 
-  const fetchComplaints = async (citizenId: number) => {
+  const fetchComplaints = async (citizenId: number | string) => {
     setLoading(true);
     try {
       const response = await axios.get(`/api/complaints/citizen/${citizenId}`);
@@ -52,9 +57,9 @@ const CitizenDashboard: React.FC = () => {
           );
           const citizenResponse = await axios.get(
             `/api/citizen/${complaint.citizen_id}`
-          ); // Use citizen_id from complaint
+          );
 
-          // Extract citizen name from the nested 'users' object
+          // Extract citizen name from the response
           const citizenName = citizenResponse.data.citizen
             ? citizenResponse.data.citizen.fullname
             : "N/A";
@@ -68,7 +73,7 @@ const CitizenDashboard: React.FC = () => {
       );
 
       setComplaints(complaintsWithData);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Failed to load complaints", error);
       setComplaints([]);
     } finally {
@@ -76,9 +81,16 @@ const CitizenDashboard: React.FC = () => {
     }
   };
 
-  const fetchCitizenId = async (userId: string | number | undefined) => {
+  const fetchCitizenInfo = async (userId: string | number | undefined) => {
+    if (!userId) return;
+
     try {
       const response = await axios.get(`/api/citizen/user/${userId}`);
+      setCitizenInfo({
+        citizen_id: response.data.citizen.citizen_id,
+        user_id: response.data.citizen.user_id,
+        fullName: response.data.citizen.fullname,
+      });
       return response.data.citizen.citizen_id;
     } catch (error) {
       console.error("Failed to fetch citizen ID", error);
@@ -88,9 +100,10 @@ const CitizenDashboard: React.FC = () => {
 
   const handleFetchMyComplaints = async () => {
     setLoading(true);
+
     try {
       const userId = user?.user_id;
-      const citizenId = await fetchCitizenId(userId);
+      const citizenId = await fetchCitizenInfo(userId);
       if (citizenId) {
         await fetchComplaints(citizenId);
       } else {
@@ -129,7 +142,7 @@ const CitizenDashboard: React.FC = () => {
       );
 
       setComplaints(complaintsWithData);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Failed to load all complaints", error);
       setComplaints([]);
     } finally {
@@ -165,7 +178,7 @@ const CitizenDashboard: React.FC = () => {
       );
 
       setComplaints(complaintsWithData);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Failed to load trending complaints", error);
       setComplaints([]);
     } finally {
@@ -184,12 +197,25 @@ const CitizenDashboard: React.FC = () => {
   };
 
   useEffect(() => {
+    // Fetch citizen info when component mounts
+    if (user?.user_id) {
+      fetchCitizenInfo(user.user_id);
+    }
+  }, [user]);
+
+  useEffect(() => {
     handleFetch();
   }, [view]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     navigate("/login");
+  };
+
+  const viewProfile = () => {
+    if (citizenInfo?.citizen_id) {
+      navigate(`/citizen/profile/${citizenInfo.citizen_id}`);
+    }
   };
 
   const handleComplaintCreated = () => {
@@ -246,12 +272,33 @@ const CitizenDashboard: React.FC = () => {
                 </Link>
               </td>
               <td>
-                <Badge bg={c.status === "Resolved" ? "success" : "warning"}>
-                  {c.status}
+                <Badge
+                  bg={
+                    c.status === "Resolved"
+                      ? "success"
+                      : c.status === "In Progress" || c.status === "In_Progress"
+                      ? "info"
+                      : c.status === "Rejected"
+                      ? "danger"
+                      : c.status === "Escalated"
+                      ? "primary"
+                      : c.status === "Closed"
+                      ? "secondary"
+                      : "warning"
+                  }
+                >
+                  {c.status === "In_Progress" ? "In Progress" : c.status}
                 </Badge>
               </td>
               <td>{c.upvotes}</td>
-              <td>{c.citizen_name || "N/A"}</td>
+              <td>
+                <Link
+                  to={`/citizen/profile/${c.citizen_id}`}
+                  className="text-decoration-none"
+                >
+                  {c.citizen_name || "N/A"}
+                </Link>
+              </td>
               <td>{new Date(c.created_at).toISOString().split("T")[0]}</td>
               <td>
                 <Button
@@ -296,9 +343,20 @@ const CitizenDashboard: React.FC = () => {
             >
               + Create
             </Button>
-            <Button variant="outline-danger" onClick={handleLogout}>
-              Logout
-            </Button>
+            <Dropdown>
+              <Dropdown.Toggle
+                variant="outline-secondary"
+                id="profile-dropdown"
+              >
+                {/* {"User"} */}
+                {citizenInfo?.fullName || "User"}
+              </Dropdown.Toggle>
+              <Dropdown.Menu align="end">
+                <Dropdown.Item onClick={viewProfile}>My Profile</Dropdown.Item>
+                <Dropdown.Divider />
+                <Dropdown.Item onClick={handleLogout}>Logout</Dropdown.Item>
+              </Dropdown.Menu>
+            </Dropdown>
           </div>
         </Navbar.Collapse>
       </Navbar>

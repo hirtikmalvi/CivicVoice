@@ -35,9 +35,11 @@ const Complaint: React.FC = () => {
     const fetchComplaint = async () => {
       try {
         const response = await axios.get(`/api/complaints/${complaintId}`);
-        console.log(response.data);
+        const complaintMediaResponse = await axios.get(
+          `/api/complaints/${complaintId}/media`
+        );
         setComplaint(response.data);
-        setMedia(response.data.media || []);
+        setMedia(complaintMediaResponse.data);
       } catch (error) {
         console.error("Failed to fetch complaint details", error);
       } finally {
