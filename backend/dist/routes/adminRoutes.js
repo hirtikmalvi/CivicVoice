@@ -15,6 +15,8 @@ router.post("/register", adminController_1.registerAdmin);
 router.post("/login", authController_1.handleLogin);
 //logout
 router.post("/logout", authController_1.handleLogout);
+// get all users
+router.get("/all/citizens", adminController_1.getAllCitizens);
 //delete
 router.delete("/delete", authMiddleware_1.isAuthenticated, isAdmin_1.isAdmin, adminController_1.deleteAdmin);
 //get admin profile

@@ -13,39 +13,42 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.transcribeAudio = void 0;
-const path_1 = __importDefault(require("path"));
-const promises_1 = __importDefault(require("fs/promises"));
-const fs_1 = __importDefault(require("fs")); // for checking dir existence
 const genai_1 = require("@google/genai");
 const asyncHandler_1 = require("../middlewares/asyncHandler");
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
 const transcribeAudio = (fileBuffer, mimeType) => __awaiter(void 0, void 0, void 0, function* () {
-    const ai = new genai_1.GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    // Ensure the "temp" folder exists
-    const tempDir = path_1.default.join(__dirname, "..", "temp");
-    if (!fs_1.default.existsSync(tempDir)) {
-        yield promises_1.default.mkdir(tempDir, { recursive: true });
-    }
-    const tempPath = path_1.default.join(tempDir, `audio_${Date.now()}.mp3`);
-    yield promises_1.default.writeFile(tempPath, fileBuffer);
     try {
-        const uploadedMedia = yield ai.files.upload({
-            file: tempPath,
-            config: { mimeType },
-        });
-        const response = yield ai.models.generateContent({
+        const genAI = new genai_1.GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        // Create a blob-like object that matches the requirements
+        const blob = new Blob([fileBuffer], { type: mimeType });
+        // Create file part directly with the blob content
+        const filePart = {
+            inlineData: {
+                data: Buffer.from(fileBuffer).toString("base64"),
+                mimeType: mimeType,
+            },
+        };
+        // Use the generative model
+        const result = yield genAI.models.generateContent({
             model: "gemini-2.0-flash",
-            contents: (0, genai_1.createUserContent)([
-                (0, genai_1.createPartFromUri)(uploadedMedia.uri, uploadedMedia.mimeType),
-                "Transcribe the spoken content in this audio. Return only the text in plain format. Identify the language. Transcribed text must only be in English",
-            ]),
+            contents: [
+                {
+                    role: "user",
+                    parts: [
+                        filePart,
+                        {
+                            text: "Transcribe the spoken content in this audio. Return only the text in plain format. Identify the language. Transcribed text must only be in English",
+                        },
+                    ],
+                },
+            ],
         });
-        return response.text.trim();
+        return result.text.trim();
     }
     catch (error) {
+        console.error("Transcription error:", error);
         throw new asyncHandler_1.CustomError("Some error has occurred while transcribing audio", 500);
-    }
-    finally {
-        yield promises_1.default.unlink(tempPath); // cleanup
     }
 });
 exports.transcribeAudio = transcribeAudio;

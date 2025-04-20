@@ -13,6 +13,8 @@ const uploadMulter = (0, multer_1.default)();
 router.route("/").get(complaintController_1.getComplaints);
 // Get Complaints By CitizenId
 router.route("/citizen/:citizenId").get(complaintController_1.getComplaintsByCitizen);
+// Trending
+router.route("/trending").get(complaintController_1.getTrendingComplaints);
 // Get Complaint By Complaint ID
 router.route("/:complaintId").get(complaintController_1.getComplaintById);
 // Get Complaints By Category Name

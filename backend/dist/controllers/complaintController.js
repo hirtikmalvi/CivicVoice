@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateComplaintAuthority = exports.updateComplaintCategory = exports.updateComplaintStatus = exports.updateComplaint = exports.removeUpvoteFromComplaint = exports.deleteMediaFromComplaint = exports.deleteComplaint = exports.upvoteComplaint = exports.createComplaint = exports.getUpvoteCountOfComplaint = exports.getAllComplaintsUpvotedByCitizen = exports.getComplaintsByAuthority = exports.getComplaintMedia = exports.getComplaintsByStatus = exports.getComplaintsByCategory = exports.getComplaintsByCitizen = exports.getComplaintById = exports.getComplaints = void 0;
+exports.getTrendingComplaints = exports.updateComplaintAuthority = exports.updateComplaintCategory = exports.updateComplaintStatus = exports.updateComplaint = exports.removeUpvoteFromComplaint = exports.deleteMediaFromComplaint = exports.deleteComplaint = exports.upvoteComplaint = exports.createComplaint = exports.getUpvoteCountOfComplaint = exports.getAllComplaintsUpvotedByCitizen = exports.getComplaintsByAuthority = exports.getComplaintMedia = exports.getComplaintsByStatus = exports.getComplaintsByCategory = exports.getComplaintsByCitizen = exports.getComplaintById = exports.getComplaints = void 0;
 const client_1 = require("@prisma/client");
 const asyncHandler_1 = require("../middlewares/asyncHandler");
 const big_integer_1 = __importDefault(require("big-integer"));
@@ -124,24 +124,41 @@ exports.getUpvoteCountOfComplaint = (0, asyncHandler_1.asyncHandler)((req, res) 
 }));
 // New complaint
 exports.createComplaint = (0, asyncHandler_1.asyncHandler)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { citizen_id, keywords, title } = req.body;
+    const { citizen_id, category, location, latitude, longitude } = req.body;
+    let { title, description } = req.body;
+    // Access other form data
     const files = req.files;
-    if (files.length > 5) {
+    if (files && files.length > 5) {
         throw new asyncHandler_1.CustomError("You can upload a maximum of 5 files.", 400);
     }
     let audioFile;
     const mediaFiles = [];
     // Separate audio and image/video files
-    for (const file of files) {
-        if (file.mimetype.startsWith("audio") && !audioFile) {
-            audioFile = file;
-        }
-        else if (file.mimetype.startsWith("image") ||
-            file.mimetype.startsWith("video")) {
-            mediaFiles.push(file);
+    if (files) {
+        for (const file of files) {
+            if (file.mimetype.startsWith("audio") && !audioFile) {
+                audioFile = file;
+            }
+            else if (file.mimetype.startsWith("image") ||
+                file.mimetype.startsWith("video")) {
+                mediaFiles.push(file);
+            }
         }
     }
-    let complaintText = keywords || "";
+    // Ensure citizen_id is present
+    if (!citizen_id) {
+        throw new asyncHandler_1.CustomError("Citizen ID is required.", 400);
+    }
+    // Convert location string to JSON object
+    let locationObject;
+    try {
+        locationObject = location ? JSON.parse(location) : null;
+    }
+    catch (error) {
+        throw new asyncHandler_1.CustomError("Invalid location format. Must be a JSON string.", 400);
+    }
+    // Initialize complaintText with the provided description if available
+    let complaintText = description || "";
     // Transcribe audio if present
     if (audioFile) {
         const transcribedText = yield (0, transcribeHelper_1.transcribeAudio)(audioFile.buffer, audioFile.mimetype);
@@ -149,17 +166,24 @@ exports.createComplaint = (0, asyncHandler_1.asyncHandler)((req, res) => __await
     }
     // Ensure complaint text is present
     if (!complaintText) {
-        throw new asyncHandler_1.CustomError("No keywords or audio provided!", 400);
+        throw new asyncHandler_1.CustomError("No description or audio provided!", 400);
     }
-    // Generate AI-based description and title
-    const complaintDescription = yield (0, complaintHelpter_1.generateDescriptionFromContext)(complaintText);
-    const complaintTitle = title || (yield (0, complaintHelpter_1.generateTitleFromContext)(complaintDescription));
+    // Generate AI-based description and title if not provided
+    if (!description) {
+        description = yield (0, complaintHelpter_1.generateDescriptionFromContext)(complaintText);
+    }
+    if (!title) {
+        title = yield (0, complaintHelpter_1.generateTitleFromContext)(description);
+    }
     // Save complaint in DB
     const complaint = yield prisma.complaint.create({
         data: {
             citizen_id: BigInt(citizen_id),
-            title: complaintTitle,
-            description: complaintDescription,
+            title: title,
+            description: description,
+            category: category || null,
+            latitude: latitude ? parseFloat(latitude) : null,
+            longitude: longitude ? parseFloat(longitude) : null,
         },
     });
     const mediaUrls = [];
@@ -177,19 +201,21 @@ exports.createComplaint = (0, asyncHandler_1.asyncHandler)((req, res) => __await
         });
     }
     // Upload all image/video files to Cloudinary & store in DB
-    for (const mediaFile of mediaFiles) {
-        const uploadResult = yield (0, uploadToCloudinary_1.uploadToCloudinary)(mediaFile.buffer, mediaFile.mimetype, "complaints");
-        mediaUrls.push(uploadResult.secure_url);
-        let mediaType = mediaFile.mimetype.startsWith("image")
-            ? "image"
-            : "video";
-        yield prisma.complaint_media.create({
-            data: {
-                complaint_id: complaint.complaint_id,
-                media_url: uploadResult.secure_url,
-                media_type: mediaType,
-            },
-        });
+    if (mediaFiles.length > 0) {
+        for (const mediaFile of mediaFiles) {
+            const uploadResult = yield (0, uploadToCloudinary_1.uploadToCloudinary)(mediaFile.buffer, mediaFile.mimetype, "complaints");
+            mediaUrls.push(uploadResult.secure_url);
+            let mediaType = mediaFile.mimetype.startsWith("image")
+                ? "image"
+                : "video";
+            yield prisma.complaint_media.create({
+                data: {
+                    complaint_id: complaint.complaint_id,
+                    media_url: uploadResult.secure_url,
+                    media_type: mediaType,
+                },
+            });
+        }
     }
     // Response
     return res.status(201).json({
@@ -339,5 +365,50 @@ exports.updateComplaintAuthority = (0, asyncHandler_1.asyncHandler)((req, res) =
         message: "Authority reassigned successfully",
         complaint: Object.assign(Object.assign({}, updated), { complaint_id: (0, big_integer_1.default)(updated.complaint_id), citizen_id: (0, big_integer_1.default)(updated.citizen_id), authority_id: (0, big_integer_1.default)(updated.authority_id) }),
     });
+}));
+// Trending
+exports.getTrendingComplaints = (0, asyncHandler_1.asyncHandler)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const now = new Date();
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 1 day ago
+    const recentComplaints = yield prisma.complaint.findMany({
+        where: {
+            created_at: {
+                gte: oneDayAgo,
+                lte: now,
+            },
+        },
+        include: {
+            citizen: {
+                include: {
+                    users: true,
+                },
+            },
+            _count: {
+                select: {
+                    upvoted_complaint: true,
+                },
+            },
+        },
+    });
+    if (recentComplaints.length === 0) {
+        return res.status(200).json([]);
+    }
+    const totalUpvotes = recentComplaints.reduce((sum, c) => sum + c._count.upvoted_complaint, 0);
+    const averageUpvotes = totalUpvotes / recentComplaints.length;
+    const trending = recentComplaints
+        .filter((c) => c._count.upvoted_complaint)
+        .map((c) => {
+        var _a, _b;
+        return ({
+            complaint_id: Number(c.complaint_id),
+            title: c.title,
+            status: c.status,
+            upvotes: c._count.upvoted_complaint,
+            citizen_name: ((_b = (_a = c.citizen) === null || _a === void 0 ? void 0 : _a.users) === null || _b === void 0 ? void 0 : _b.fullname) || "Unknown",
+            created_at: c.created_at,
+            citizen_id: Number(c.citizen_id),
+        });
+    });
+    return res.status(200).json(trending);
 }));
 //# sourceMappingURL=complaintController.js.map

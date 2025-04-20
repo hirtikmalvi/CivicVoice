@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateCitizenProfile = exports.getCitizenProfile = exports.deleteCitizen = exports.registerCitizen = void 0;
+exports.updateCitizenProfile = exports.getCitizenByUserId = exports.getCitizenById = exports.getCitizenProfile = exports.deleteCitizen = exports.registerCitizen = void 0;
 const big_integer_1 = __importDefault(require("big-integer"));
 const asyncHandler_1 = require("../middlewares/asyncHandler");
 const prismaClient_1 = __importDefault(require("../utils/prismaClient"));
@@ -38,7 +38,7 @@ exports.registerCitizen = (0, asyncHandler_1.asyncHandler)((req, res) => __await
         success: true,
         message: "Citizen registered",
         user: Object.assign(Object.assign({}, user), { user_id: (0, big_integer_1.default)(user.user_id) }),
-        citizen: Object.assign(Object.assign({}, citizen), { user_id: (0, big_integer_1.default)(user.user_id), citizen_id: (0, big_integer_1.default)(citizen.citizen_id) })
+        citizen: Object.assign(Object.assign({}, citizen), { user_id: (0, big_integer_1.default)(user.user_id), citizen_id: (0, big_integer_1.default)(citizen.citizen_id) }),
     });
 }));
 //delete citizen
@@ -49,7 +49,7 @@ exports.deleteCitizen = (0, asyncHandler_1.asyncHandler)((req, res) => __awaiter
         throw new asyncHandler_1.CustomError("Unauthorized access", 401);
     }
     const existingUser = yield prismaClient_1.default.users.findUnique({
-        where: { user_id: userId }
+        where: { user_id: userId },
     });
     if (!existingUser) {
         throw new asyncHandler_1.CustomError("User profile not found", 404);
@@ -100,7 +100,85 @@ exports.getCitizenProfile = (0, asyncHandler_1.asyncHandler)((req, res) => __awa
         success: true,
         message: "Citizen profile fetched successfully",
         user: Object.assign(Object.assign({}, user), { user_id: (0, big_integer_1.default)(user.user_id) }),
-        citizen: Object.assign(Object.assign({}, citizen), { user_id: (0, big_integer_1.default)(citizen.user_id), citizen_id: (0, big_integer_1.default)(citizen.citizen_id) })
+        citizen: Object.assign(Object.assign({}, citizen), { user_id: (0, big_integer_1.default)(citizen.user_id), citizen_id: (0, big_integer_1.default)(citizen.citizen_id) }),
+    });
+}));
+// Get Citizen By Id
+exports.getCitizenById = (0, asyncHandler_1.asyncHandler)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const citizen_id = req.params.citizen_id;
+    if (!citizen_id) {
+        throw new asyncHandler_1.CustomError("Citizen ID is required", 400);
+    }
+    const citizen = yield prismaClient_1.default.citizen.findUnique({
+        where: { citizen_id: BigInt(citizen_id) },
+        include: {
+            users: true,
+        },
+    });
+    if (!citizen) {
+        throw new asyncHandler_1.CustomError("Citizen not found", 404);
+    }
+    res.status(200).json({
+        message: "Citizen fetched successfully",
+        citizen: {
+            citizen_id: (0, big_integer_1.default)(citizen.citizen_id),
+            user_id: (0, big_integer_1.default)(citizen.user_id),
+            adhar_number: citizen.adhar_number,
+            phone_number: citizen.phone_number,
+            city: citizen.city,
+            state: citizen.state,
+            pincode: citizen.pincode,
+            address: citizen.address,
+            latitude: citizen.latitude,
+            longitude: citizen.longitude,
+            created_at: citizen.created_at,
+            updated_at: citizen.updated_at,
+            fullname: citizen.users.fullname,
+            email: citizen.users.email,
+            role: citizen.users.role,
+            user_created_at: citizen.users.created_at,
+            user_updated_at: citizen.users.updated_at,
+        },
+    });
+}));
+// Get Citizen from user_id.
+exports.getCitizenByUserId = (0, asyncHandler_1.asyncHandler)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const userId = req.params.user_id;
+    if (!userId) {
+        throw new asyncHandler_1.CustomError("User ID is required", 400);
+    }
+    const citizen = yield prismaClient_1.default.citizen.findUnique({
+        where: {
+            user_id: BigInt(userId),
+        },
+        include: {
+            users: true,
+        },
+    });
+    if (!citizen) {
+        throw new asyncHandler_1.CustomError("Citizen not found for given user ID", 404);
+    }
+    res.status(200).json({
+        message: "Citizen fetched successfully",
+        citizen: {
+            citizen_id: (0, big_integer_1.default)(citizen.citizen_id),
+            user_id: (0, big_integer_1.default)(citizen.user_id),
+            adhar_number: citizen.adhar_number,
+            phone_number: citizen.phone_number,
+            city: citizen.city,
+            state: citizen.state,
+            pincode: citizen.pincode,
+            address: citizen.address,
+            latitude: citizen.latitude,
+            longitude: citizen.longitude,
+            created_at: citizen.created_at,
+            updated_at: citizen.updated_at,
+            fullname: citizen.users.fullname,
+            email: citizen.users.email,
+            role: citizen.users.role,
+            user_created_at: citizen.users.created_at,
+            user_updated_at: citizen.users.updated_at,
+        },
     });
 }));
 //update citizen
@@ -112,10 +190,14 @@ exports.updateCitizenProfile = (0, asyncHandler_1.asyncHandler)((req, res) => __
     }
     yield (0, validations_1.isValidCitizenUpdate)(userId, req.body);
     const { fullname, email, role_based_data } = req.body;
-    const existingUser = yield prismaClient_1.default.users.findUnique({ where: { user_id: userId } });
+    const existingUser = yield prismaClient_1.default.users.findUnique({
+        where: { user_id: userId },
+    });
     if (!existingUser)
         throw new asyncHandler_1.CustomError("User not found", 404);
-    const existingCitizen = yield prismaClient_1.default.citizen.findUnique({ where: { user_id: userId } });
+    const existingCitizen = yield prismaClient_1.default.citizen.findUnique({
+        where: { user_id: userId },
+    });
     if (!existingCitizen)
         throw new asyncHandler_1.CustomError("Citizen profile not found", 404);
     // Update base user fields
@@ -126,7 +208,15 @@ exports.updateCitizenProfile = (0, asyncHandler_1.asyncHandler)((req, res) => __
     // Update citizen fields
     const updatedCitizen = yield prismaClient_1.default.citizen.update({
         where: { user_id: userId },
-        data: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, ((role_based_data === null || role_based_data === void 0 ? void 0 : role_based_data.adhar_number) && { adhar_number: role_based_data.adhar_number })), ((role_based_data === null || role_based_data === void 0 ? void 0 : role_based_data.phone_number) && { phone_number: role_based_data.phone_number })), ((role_based_data === null || role_based_data === void 0 ? void 0 : role_based_data.city) && { city: role_based_data.city })), ((role_based_data === null || role_based_data === void 0 ? void 0 : role_based_data.state) && { state: role_based_data.state })), ((role_based_data === null || role_based_data === void 0 ? void 0 : role_based_data.address) && { address: role_based_data.address })), ((role_based_data === null || role_based_data === void 0 ? void 0 : role_based_data.pincode) && { pincode: role_based_data.pincode })), ((role_based_data === null || role_based_data === void 0 ? void 0 : role_based_data.latitude) && { latitude: role_based_data.latitude })), ((role_based_data === null || role_based_data === void 0 ? void 0 : role_based_data.longitude) && { longitude: role_based_data.longitude })),
+        data: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, ((role_based_data === null || role_based_data === void 0 ? void 0 : role_based_data.adhar_number) && {
+            adhar_number: role_based_data.adhar_number,
+        })), ((role_based_data === null || role_based_data === void 0 ? void 0 : role_based_data.phone_number) && {
+            phone_number: role_based_data.phone_number,
+        })), ((role_based_data === null || role_based_data === void 0 ? void 0 : role_based_data.city) && { city: role_based_data.city })), ((role_based_data === null || role_based_data === void 0 ? void 0 : role_based_data.state) && { state: role_based_data.state })), ((role_based_data === null || role_based_data === void 0 ? void 0 : role_based_data.address) && { address: role_based_data.address })), ((role_based_data === null || role_based_data === void 0 ? void 0 : role_based_data.pincode) && { pincode: role_based_data.pincode })), ((role_based_data === null || role_based_data === void 0 ? void 0 : role_based_data.latitude) && {
+            latitude: role_based_data.latitude,
+        })), ((role_based_data === null || role_based_data === void 0 ? void 0 : role_based_data.longitude) && {
+            longitude: role_based_data.longitude,
+        })),
     });
     res.status(200).json({
         success: true,

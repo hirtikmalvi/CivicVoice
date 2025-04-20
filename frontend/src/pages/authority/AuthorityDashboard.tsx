@@ -66,7 +66,7 @@ const AuthorityDashboard: React.FC = () => {
 
   return (
     <>
-      <Navbar bg="light" className="px-4 d-flex justify-content-between">
+      {/* <Navbar bg="light" className="px-4 d-flex justify-content-between">
         <h4>Authority Dashboard</h4>
         <div className="d-flex gap-3 align-items-center">
           <ProfileCard />
@@ -129,7 +129,7 @@ const AuthorityDashboard: React.FC = () => {
             ))}
           </tbody>
         </Table>
-      </Container>
+      </Container> */}
     </>
   );
 };
