@@ -11,6 +11,7 @@ import {
   getComplaintsByCategory,
   getComplaintsByCitizen,
   getComplaintsByStatus,
+  getTrendingComplaints,
   getUpvoteCountOfComplaint,
   removeUpvoteFromComplaint,
   updateComplaint,
@@ -34,6 +35,9 @@ router.route("/").get(getComplaints);
 
 // Get Complaints By CitizenId
 router.route("/citizen/:citizenId").get(getComplaintsByCitizen);
+
+// Trending
+router.route("/trending").get(getTrendingComplaints);
 
 // Get Complaint By Complaint ID
 router.route("/:complaintId").get(getComplaintById);

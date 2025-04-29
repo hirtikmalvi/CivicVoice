@@ -1,20 +1,21 @@
-import React from "react";
-// Note: Bootstrap would need to be installed in your project
-// import "bootstrap/dist/css/bootstrap.min.css";
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import axios from "../../api/axiosInstance";
+import { Spinner } from "react-bootstrap";
 
 // Define interfaces for our data types
 interface User {
-  user_id: number;
-  username: string;
+  user_id: string;
   email: string;
-  first_name: string;
-  last_name: string;
-  profile_picture: string | null;
+  fullname: string;
+  role: string;
+  user_created_at: string;
+  user_updated_at: string;
 }
 
 interface Citizen {
-  citizen_id: number;
-  user_id: number;
+  citizen_id: string;
+  user_id: string;
   adhar_number: string;
   phone_number: string;
   city: string;
@@ -25,45 +26,50 @@ interface Citizen {
   address: string;
   latitude: number | null;
   longitude: number | null;
-  users: User;
+  fullname: string;
+  email: string;
+  role: string;
+  user_created_at: string;
+  user_updated_at: string;
 }
 
-// Citizen Profile Component
+// CitizenProfile Component
 export const CitizenProfile: React.FC = () => {
-  // Hardcoded citizen data
-  const citizen: Citizen = {
-    citizen_id: 123,
-    user_id: 456,
-    adhar_number: "123456789012",
-    phone_number: "9876543210",
-    city: "Ahmedabad",
-    state: "Gujarat",
-    pincode: "380015",
-    created_at: "2024-04-10T14:30:00.000Z",
-    updated_at: "2025-04-16T10:45:00.000Z",
-    address: "123, Clear Street, Satellite Area",
-    latitude: 23.0225,
-    longitude: 72.5714,
-    users: {
-      user_id: 456,
-      username: "citizen_john",
-      email: "john.doe@example.com",
-      first_name: "John",
-      last_name: "Doe",
-      profile_picture:
-        "https://res.cloudinary.com/demo/image/facebook/s--ZuJGmG2B--/65646572251",
-    },
-  };
+  const { citizenId } = useParams<{ citizenId: string }>();
+  const [citizen, setCitizen] = useState<Citizen | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchCitizenData = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get(`/api/citizen/${citizenId}`);
+        setCitizen(response.data.citizen);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching citizen data:", err);
+        setError("Failed to load citizen profile. Please try again later.");
+        setLoading(false);
+      }
+    };
+
+    if (citizenId) {
+      fetchCitizenData();
+    }
+  }, [citizenId]);
 
   // Format date to a more readable format
   const formatDate = (dateString: string): string => {
+    if (!dateString) return "N/A";
     const date = new Date(dateString);
     return date.toLocaleString();
   };
 
   // Open map in new tab with the location
   const viewOnMap = (): void => {
-    if (citizen.latitude && citizen.longitude) {
+    if (citizen?.latitude && citizen?.longitude) {
       const mapUrl = `https://www.google.com/maps?q=${citizen.latitude},${citizen.longitude}`;
       window.open(mapUrl, "_blank");
     }
@@ -71,19 +77,55 @@ export const CitizenProfile: React.FC = () => {
 
   // Mask the Aadhar number for privacy
   const maskAadhar = (aadhar: string): string => {
+    if (!aadhar) return "N/A";
     return "XXXX-XXXX-" + aadhar.slice(-4);
   };
 
   // Mask the phone number for privacy
   const maskPhone = (phone: string): string => {
+    if (!phone) return "N/A";
     return "XXXXX-" + phone.slice(-5);
   };
+
+  // Go back to previous page
+  const handleGoBack = () => {
+    navigate(-1);
+  };
+
+  if (loading) {
+    return (
+      <div className="container py-5 text-center">
+        <Spinner animation="border" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </Spinner>
+      </div>
+    );
+  }
+
+  if (error || !citizen) {
+    return (
+      <div className="container py-5">
+        <div className="alert alert-danger" role="alert">
+          {error || "Citizen profile not found"}
+        </div>
+        <button className="btn btn-primary" onClick={handleGoBack}>
+          Go Back
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="container py-4">
       <div className="card shadow-sm">
-        <div className="card-header bg-light">
+        <div className="card-header bg-light d-flex justify-content-between align-items-center">
           <h4 className="mb-0">Citizen Profile</h4>
+          <button
+            className="btn btn-outline-secondary btn-sm"
+            onClick={handleGoBack}
+          >
+            Back
+          </button>
         </div>
         <div className="card-body">
           <div className="row mb-4">
@@ -93,10 +135,7 @@ export const CitizenProfile: React.FC = () => {
                 style={{ width: "150px", height: "150px" }}
               >
                 <img
-                  src={
-                    citizen.users.profile_picture ||
-                    "https://via.placeholder.com/150"
-                  }
+                  src="https://via.placeholder.com/150"
                   alt="Profile"
                   className="img-fluid"
                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
@@ -104,16 +143,14 @@ export const CitizenProfile: React.FC = () => {
               </div>
             </div>
             <div className="col-md-9">
-              <h5 className="mb-3">
-                {citizen.users.first_name} {citizen.users.last_name}
-              </h5>
+              <h5 className="mb-3">{citizen.fullname}</h5>
               <div className="row">
                 <div className="col-md-6 mb-2">
                   <p className="mb-1">
-                    <strong>Username:</strong> {citizen.users.username}
+                    <strong>Name:</strong> {citizen.fullname}
                   </p>
                   <p className="mb-1">
-                    <strong>Email:</strong> {citizen.users.email}
+                    <strong>Email:</strong> {citizen.email}
                   </p>
                   <p className="mb-1">
                     <strong>Phone:</strong> {maskPhone(citizen.phone_number)}
@@ -128,7 +165,7 @@ export const CitizenProfile: React.FC = () => {
                   </p>
                   <p className="mb-1">
                     <strong>Member Since:</strong>{" "}
-                    {formatDate(citizen.created_at).split(",")[0]}
+                    {formatDate(citizen.user_created_at).split(",")[0]}
                   </p>
                 </div>
               </div>
@@ -188,15 +225,19 @@ export const CitizenProfile: React.FC = () => {
                       <tbody>
                         <tr>
                           <th style={{ width: "180px" }}>Account Created</th>
-                          <td>{formatDate(citizen.created_at)}</td>
+                          <td>{formatDate(citizen.user_created_at)}</td>
                         </tr>
                         <tr>
                           <th>Last Updated</th>
-                          <td>{formatDate(citizen.updated_at)}</td>
+                          <td>{formatDate(citizen.user_updated_at)}</td>
                         </tr>
                         <tr>
                           <th>User ID</th>
                           <td>{citizen.user_id}</td>
+                        </tr>
+                        <tr>
+                          <th>Role</th>
+                          <td>{citizen.role}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -210,3 +251,5 @@ export const CitizenProfile: React.FC = () => {
     </div>
   );
 };
+
+export default CitizenProfile;
