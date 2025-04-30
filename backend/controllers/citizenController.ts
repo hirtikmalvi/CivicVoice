@@ -1,4 +1,4 @@
-import bigInt from "big-integer";
+import bigInt, { BigInteger } from "big-integer";
 import { Request, Response } from "express";
 import { asyncHandler, CustomError } from "../middlewares/asyncHandler";
 import prisma from "../utils/prismaClient";
@@ -169,6 +169,7 @@ export const getCitizenById = asyncHandler(
         user_created_at: citizen.users.created_at,
         user_updated_at: citizen.users.updated_at,
       },
+      // users: {...citizen.users, user_id: bigInt(citizen.users.user_id)}
     });
   }
 );
@@ -293,3 +294,25 @@ export const updateCitizenProfile = asyncHandler(
     });
   }
 );
+
+
+//helper function to get citizen_id by user_id
+
+export const getCitizenIdByUserId = async (userId: string): Promise<BigInteger> => {
+  const citizen = await prisma.citizen.findUnique({
+    where: {
+      user_id: BigInt(userId),
+    },
+    select: {
+      citizen_id: true,
+    },
+  });
+
+  if (!citizen) {
+    throw new CustomError('Citizen not found for the given user_id', 404);
+  }
+
+  return bigInt(citizen.citizen_id);
+};
+
+

@@ -1,136 +1,108 @@
-import React, { useState } from "react";
-import {
-  Container,
-  Button,
-  Table,
-  Badge,
-  Navbar,
-  Nav,
-  Form,
-} from "react-bootstrap";
-import { useNavigate } from "react-router-dom";
+// pages/authority/AuthorityDashboard.tsx
+import React, { useEffect, useState } from "react";
+import ComplaintList from "./complaintList";
 import { getUserFromToken } from "../../hooks/useAuth";
-import ProfileCard from "../../components/ProfileCard";
+import axios from "../../api/axiosInstance";
+import { toast } from "react-toastify";
 
+// Define the type for a complaint
 interface Complaint {
   id: number;
   title: string;
   status: string;
   upvotes: number;
   createdBy: string;
+  // Add other fields as needed
+}
+
+interface Authority {
+  id: number;
+  department: string;
+  // Add other fields if needed
+}
+
+interface ComplaintResponse {
+  data: Complaint[];
 }
 
 const AuthorityDashboard: React.FC = () => {
-  const user = getUserFromToken();
-  const navigate = useNavigate();
-  const [searchText, setSearchText] = useState("");
+  const user = getUserFromToken(); // { user_id, role }
 
-  const [allComplaints, setAllComplaints] = useState<Complaint[]>([
-    {
-      id: 1,
-      title: "Broken pipe",
-      status: "Pending",
-      upvotes: 5,
-      createdBy: "user1",
-    },
-    {
-      id: 2,
-      title: "No streetlights",
-      status: "In Progress",
-      upvotes: 7,
-      createdBy: "user2",
-    },
-    {
-      id: 3,
-      title: "Garbage overflow",
-      status: "Resolved",
-      upvotes: 4,
-      createdBy: "user3",
-    },
-  ]);
+  const [complaints, setComplaints] = useState<Complaint[]>([]);
+  const [department, setDepartment] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/login");
+  const fetchAuthorityByUserId = async (
+    userId: string | number
+  ): Promise<Authority | null> => {
+    try {
+      const response = await axios.get(`/api/authority/user/${userId}`);
+      return response.data?.authority || null;
+    } catch (error) {
+      console.error("Failed to fetch authority", error);
+      toast.error("Failed to fetch authority information.");
+      return null;
+    }
   };
 
-  const handleStatusChange = (id: number, newStatus: string) => {
-    setAllComplaints((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, status: newStatus } : c))
-    );
+  const fetchComplaintsByDepartment = async (
+    department: string
+  ): Promise<Complaint[]> => {
+    try {
+      const response = await axios.get<ComplaintResponse>(
+        `api/complaints/department/${department}`
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error("Failed to fetch complaints by department", error);
+      toast.error("Failed to fetch complaints for this department.");
+      return [];
+    }
   };
 
-  const filteredComplaints = allComplaints.filter((c) =>
-    c.title.toLowerCase().includes(searchText.toLowerCase())
-  );
+  const loadAuthorityComplaints = async () => {
+    if (user?.user_id && user?.role === "Authority") {
+      setLoading(true);
+      try {
+        const authority = await fetchAuthorityByUserId(user.user_id);
+        if (authority?.department) {
+          const dept = authority.department;
+          setDepartment(dept);
+
+          const complaintsData = await fetchComplaintsByDepartment(dept);
+          setComplaints(complaintsData || []);
+        }
+      } catch (err) {
+        console.error("Error loading authority complaints:", err);
+        toast.error("Something went wrong while loading complaints.");
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    loadAuthorityComplaints();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
-    <>
-      {/* <Navbar bg="light" className="px-4 d-flex justify-content-between">
-        <h4>Authority Dashboard</h4>
-        <div className="d-flex gap-3 align-items-center">
-          <ProfileCard />
-          <Button variant="outline-danger" onClick={handleLogout}>
-            Logout
-          </Button>
-        </div>
-      </Navbar>
+    <div className="container mt-4">
+      <div className="text-center mb-4">
+        <h2 className="fw-bold">
+          Complaints for {department ? department.replace(/_/g, " ") : "..."}
+        </h2>
+        <p className="text-muted">Click on a complaint to view and update details</p>
+      </div>
 
-      <Container className="mt-4">
-        <Form.Control
-          type="text"
-          placeholder="Search complaints..."
-          className="mb-3"
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-        />
-
-        <Table striped bordered hover responsive>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Title</th>
-              <th>Status</th>
-              <th>Upvotes</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredComplaints.map((c) => (
-              <tr key={c.id}>
-                <td>{c.id}</td>
-                <td>{c.title}</td>
-                <td>
-                  <Badge
-                    bg={
-                      c.status === "Resolved"
-                        ? "success"
-                        : c.status === "In Progress"
-                        ? "info"
-                        : "warning"
-                    }
-                  >
-                    {c.status}
-                  </Badge>
-                </td>
-                <td>{c.upvotes}</td>
-                <td>
-                  <Form.Select
-                    size="sm"
-                    value={c.status}
-                    onChange={(e) => handleStatusChange(c.id, e.target.value)}
-                  >
-                    <option>Pending</option>
-                    <option>In Progress</option>
-                    <option>Resolved</option>
-                  </Form.Select>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      </Container> */}
-    </>
+      {loading ? (
+        <p className="text-center">Loading complaints...</p>
+      ) : complaints.length === 0 ? (
+        <p className="text-center text-muted">No complaints found for this department.</p>
+      ) : (
+        <ComplaintList complaints={complaints} />
+      )}
+    </div>
   );
 };
 

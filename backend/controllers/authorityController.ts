@@ -5,7 +5,7 @@ import prisma from "../utils/prismaClient";
 import { CustomError, asyncHandler } from "../middlewares/asyncHandler";
 import { users_role } from "@prisma/client";
 import { isValidAuthority, isValidAuthorityUpdate } from "../utils/validations";
-import bigInt from "big-integer";
+import bigInt, {BigInteger} from "big-integer";
 
 export const registerAuthority = asyncHandler(async (req: Request, res: Response) => {
     await isValidAuthority(req.body as AuthorityRegisterRequest);
@@ -167,3 +167,95 @@ export const updateAuthorityProfile = asyncHandler(async (req: any, res: Respons
     },
   });
 });
+
+
+// get department by user_id
+
+export const getDepartmentByUserId = async (userId: string): Promise<BigInteger> => {
+  const authority = await prisma.authority.findUnique({
+    where: {
+      user_id: BigInt(userId),
+    },
+    select: {
+      department: true,
+    },
+  });
+
+  if (!authority) {
+    throw new CustomError('Authority not found for the given user_id', 404);
+  }
+
+  return bigInt(authority.department);
+};
+
+
+//authority by id
+export const getAuthorityById = asyncHandler(
+  async (req: Request, res: Response) => {
+    const authorityId = req.params.authority_id;
+
+    if (!authorityId) {
+      throw new CustomError("authority ID is required", 400);
+    }
+
+    const authority = await prisma.authority.findUnique({
+      where: { authority_id: BigInt(authorityId) },
+      include: {
+        users: true,
+      },
+    });
+
+    if (!authority) {
+      throw new CustomError("authority not found", 404);
+    }
+
+    res.status(200).json({
+      message: "authority fetched successfully",
+      authority: {
+        ...authority,
+        authority_id: bigInt(authority.authority_id),
+        user_id: bigInt(authority.user_id),
+        users: {...authority.users, user_id: bigInt(authority.users.user_id)}
+      },
+    });
+  }
+);
+
+
+//get Authority by user_id
+//authority by id
+export const getAuthorityByUserId = asyncHandler(
+  async (req: Request, res: Response) => {
+    const user_id = req.params.user_id;
+
+    if (!user_id) {
+      throw new CustomError("User ID is required", 400);
+    }
+
+    const authority = await prisma.authority.findUnique({
+      where: { user_id: BigInt(user_id) },
+      include: {
+        users: true,
+      },
+    });
+
+    if (!authority) {
+      throw new CustomError("authority not found", 404);
+    }
+
+    res.status(200).json({
+      message: "authority fetched successfully",
+      authority: {
+        authority_id: bigInt(authority.authority_id),
+        user_id: bigInt(authority.user_id),
+        department: authority.department,
+        zone: authority.zone,
+        fullname: authority.users.fullname,
+        email: authority.users.email,
+        role: authority.users.role,
+        created_at: authority.created_at,
+        updated_at: authority.updated_at
+      },
+    });
+  }
+);

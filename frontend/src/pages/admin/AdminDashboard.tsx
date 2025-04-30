@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import AdminProfile from './AdminProfile'; 
 import {
   Container,
   Button,
@@ -53,6 +54,19 @@ interface Citizen {
   email: string;
 }
 
+interface Authority {
+  authority_id: number;
+  user_id: number;
+  zone: string;
+  department: string;
+  created_at: string;
+  updated_at: string;
+  fullname?: string;
+  email: string;
+  user_created_at: string;
+  user_updated_at: string;
+}
+
 const statusMapping = {
   Pending: "Pending",
   "In Progress": "In_Progress",
@@ -74,12 +88,13 @@ const displayMapping = {
 const AdminDashboard: React.FC = () => {
   const user = getUserFromToken();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<"complaints" | "users" | "citizens">(
+  const [tab, setTab] = useState<"complaints" | "users" | "citizens" | "authorities" | "profile">(
     "complaints"
   );
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [citizens, setCitizens] = useState<Citizen[]>([]);
+  const [authorities, setAuthorities] = useState<Authority[]>([]);
   const [loading, setLoading] = useState(false);
   const [editedStatus, setEditedStatus] = useState<{ [id: number]: string }>(
     {}
@@ -126,8 +141,10 @@ const AdminDashboard: React.FC = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const response = await axios.get("/api/admin/all/citizens");
-      setUsers(Array.isArray(response.data) ? response.data : []);
+      const response = await axios.get("/api/admin/all/users");
+      console.log(response.data.users);
+      setUsers(Array.isArray(response.data.users) ? response.data.users : []);
+      console.log(Array.isArray(response.data.users));
     } catch (error) {
       toast.error("Failed to load users");
     } finally {
@@ -148,10 +165,103 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const fetchAuthorities = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get("/api/admin/all/authorities");
+      console.log(response.data.authorities);
+      setAuthorities(response.data.authorities);
+    } catch (error) {
+      toast.error("Failed to load authorities");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteComplaint = async (complaintId: number | string) => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this complaint?"
+    );
+    if (!confirmDelete) return;
+
+    try {
+      await axios.delete(`/api/complaints/${complaintId}`);
+      setComplaints((prev) =>
+        prev.filter((c) => c.complaint_id !== complaintId)
+      );
+      toast.success("Complaint deleted successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete complaint.");
+    }
+  };
+
+  //delete citizen
+  const handleDeleteCitizen = async (citizenId: number | string) => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this citizen?"
+    );
+    if (!confirmDelete) return;
+  
+    try {
+      await axios.delete(`/api/admin/by-citizen-id/${citizenId}`);
+      setCitizens((prev) =>
+        prev.filter((citizen) => citizen.citizen_id !== citizenId)
+      );
+      toast.success("Citizen deleted successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete citizen.");
+    }
+  };
+
+  // Delete authority
+  const handleDeleteAuthority = async (authorityId: number | string) => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this authority?"
+    );
+    if (!confirmDelete) return;
+  
+    try {
+      await axios.delete(`/api/admin/by-authority-id/${authorityId}`);
+      setAuthorities((prev) =>
+        prev.filter((authority) => authority.authority_id !== authorityId)
+      );
+      toast.success("Authority deleted successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete authority.");
+    }
+  };
+
+  //Delete whole user with role (user_type)
+  const handleDeleteUser = async (userId: number | string) => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this citizen?"
+    );
+    if (!confirmDelete) return;
+  
+    try {
+      await axios.delete(`/api/admin/user/${userId}`);
+      setUsers((prev) => {
+        const updated = prev.filter((user) => user.user_id !== userId);
+        return updated;
+      }
+      );
+
+      toast.success("User deleted successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete User.");
+    }
+  };
+  
+
   useEffect(() => {
     if (tab === "complaints") fetchComplaints();
     else if (tab === "users") fetchUsers();
-    else fetchCitizens();
+    else if (tab === "citizens") fetchCitizens();
+    else fetchAuthorities();
   }, [tab]);
 
   const handleStatusChange = (id: number, newStatus: string) => {
@@ -227,6 +337,18 @@ const AdminDashboard: React.FC = () => {
               active={tab === "citizens"}
             >
               All Citizens
+            </Nav.Link>
+            <Nav.Link
+              onClick={() => setTab("authorities")}
+              active={tab === "authorities"}
+            >
+              All Authorities
+            </Nav.Link>
+            <Nav.Link
+              onClick={() => setTab("profile")}
+              active={tab === "profile"}
+            >
+              Profile
             </Nav.Link>
           </Nav>
           <Button variant="outline-danger" onClick={handleLogout}>
@@ -307,6 +429,15 @@ const AdminDashboard: React.FC = () => {
                           ? "Updating..."
                           : "Update"}
                       </Button>
+
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={() => handleDeleteComplaint(c.complaint_id)}
+                        className="mt-1"
+                      >
+                        Delete
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -325,6 +456,7 @@ const AdminDashboard: React.FC = () => {
                   <th>Role</th>
                   <th>Registered</th>
                   <th>Updated</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -338,12 +470,23 @@ const AdminDashboard: React.FC = () => {
                     </td>
                     <td>{formatDate(u.created_at)}</td>
                     <td>{formatDate(u.updated_at)}</td>
+                    <td>
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          onClick={() =>
+                            handleDeleteUser(u.user_id)
+                          }
+                        >
+                          Delete
+                        </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </Table>
           </>
-        ) : (
+        ) : tab === "citizens" ? (
           <>
             <h4>All Citizens</h4>
             <Table striped bordered hover responsive className="text-center">
@@ -356,6 +499,7 @@ const AdminDashboard: React.FC = () => {
                   <th>Aadhar</th>
                   <th>City/State</th>
                   <th>Registered</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -370,12 +514,64 @@ const AdminDashboard: React.FC = () => {
                       {c.city}, {c.state}
                     </td>
                     <td>{formatDate(c.created_at)}</td>
+                    <td>
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={() => handleDeleteCitizen(c.citizen_id)}
+                      >
+                        Delete
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </Table>
           </>
-        )}
+        ) : tab === "authorities" ? (
+          <>
+          <h4>All Authorities</h4>
+          <Table striped bordered hover responsive className="text-center">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Department</th>
+                <th>Zone</th>
+                <th>Created At</th>
+                <th>Updated At</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {authorities.map((a) => (
+                <tr key={a.authority_id}>
+                  <td>{a.authority_id}</td>
+                  <td>{a.fullname}</td>
+                  <td>{a.email}</td>
+                  <td>{a.department}</td>
+                  <td>{a.zone}</td>
+                  <td>{formatDate(a.created_at)}</td>
+                  <td>{formatDate(a.updated_at)}</td>
+                  <td>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => handleDeleteAuthority(a.authority_id)}
+                    >
+                      Delete
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </>
+        ) : (
+          <AdminProfile />
+        )
+        }
       </Container>
     </>
   );

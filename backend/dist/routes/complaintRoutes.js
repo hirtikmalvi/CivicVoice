@@ -49,5 +49,9 @@ router.delete("/:complaintId", complaintController_1.deleteComplaint);
 router.delete("/:complaintId/media/:mediaId", complaintController_1.deleteMediaFromComplaint);
 // Remove an upvote from a complaint by citizen
 router.delete("/:complaintId/upvote/:citizenId", complaintController_1.removeUpvoteFromComplaint);
+// Complaints grouped by departments for all departments
+router.get("/by-department/all", complaintController_1.getComplaintsGroupedByDepartment);
+//get complaint by department
+router.get("/department/:department_type", complaintController_1.getComplaintsByDepartment);
 exports.default = router;
 //# sourceMappingURL=complaintRoutes.js.map

@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getTrendingComplaints = exports.updateComplaintAuthority = exports.updateComplaintCategory = exports.updateComplaintStatus = exports.updateComplaint = exports.removeUpvoteFromComplaint = exports.deleteMediaFromComplaint = exports.deleteComplaint = exports.upvoteComplaint = exports.createComplaint = exports.getUpvoteCountOfComplaint = exports.getAllComplaintsUpvotedByCitizen = exports.getComplaintsByAuthority = exports.getComplaintMedia = exports.getComplaintsByStatus = exports.getComplaintsByCategory = exports.getComplaintsByCitizen = exports.getComplaintById = exports.getComplaints = void 0;
+exports.getComplaintsByDepartment = exports.getComplaintsGroupedByDepartment = exports.getTrendingComplaints = exports.updateComplaintAuthority = exports.updateComplaintCategory = exports.updateComplaintStatus = exports.updateComplaint = exports.removeUpvoteFromComplaint = exports.deleteMediaFromComplaint = exports.deleteComplaint = exports.upvoteComplaint = exports.createComplaint = exports.getUpvoteCountOfComplaint = exports.getAllComplaintsUpvotedByCitizen = exports.getComplaintsByAuthority = exports.getComplaintMedia = exports.getComplaintsByStatus = exports.getComplaintsByCategory = exports.getComplaintsByCitizen = exports.getComplaintById = exports.getComplaints = void 0;
 const client_1 = require("@prisma/client");
 const asyncHandler_1 = require("../middlewares/asyncHandler");
 const big_integer_1 = __importDefault(require("big-integer"));
@@ -20,6 +20,8 @@ const uploadToCloudinary_1 = require("../utils/uploadToCloudinary");
 const complaintHelpter_1 = require("../utils/complaintHelpter");
 const transcribeHelper_1 = require("../utils/transcribeHelper");
 const dotenv_1 = __importDefault(require("dotenv"));
+const categoryToDepartment_1 = require("../utils/categoryToDepartment");
+const convertDepartmentMapToBigInteger_1 = require("../utils/convertDepartmentMapToBigInteger");
 dotenv_1.default.config();
 const prisma = new client_1.PrismaClient();
 exports.getComplaints = (0, asyncHandler_1.asyncHandler)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -34,11 +36,19 @@ exports.getComplaintById = (0, asyncHandler_1.asyncHandler)((req, res) => __awai
         where: {
             complaint_id: parseInt(req.params.complaintId),
         },
+        include: {
+            complaint_media: true
+        }
     });
     if (!complaint) {
         throw new asyncHandler_1.CustomError(`Complaint with complaintId: ${req.params.complaintId} Not Found`, 404);
     }
-    return res.json(Object.assign(Object.assign({}, complaint), { complaint_id: (0, big_integer_1.default)(complaint.complaint_id), authority_id: (0, big_integer_1.default)(complaint.authority_id), citizen_id: (0, big_integer_1.default)(complaint.citizen_id) }));
+    console.log("complaint media:", complaint.complaint_media[0]);
+    return res.json(Object.assign(Object.assign({}, complaint), { complaint_id: (0, big_integer_1.default)(complaint.complaint_id), authority_id: (0, big_integer_1.default)(complaint.authority_id), citizen_id: (0, big_integer_1.default)(complaint.citizen_id), complaint_media: complaint.complaint_media.map((m) => ({
+            media_id: (0, big_integer_1.default)(m.media_id),
+            complaint_id: (0, big_integer_1.default)(m.complaint_id),
+            media_url: m.media_url
+        })) }));
 }));
 exports.getComplaintsByCitizen = (0, asyncHandler_1.asyncHandler)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const complaintsByCitizen = yield prisma.complaint.findMany({
@@ -410,5 +420,63 @@ exports.getTrendingComplaints = (0, asyncHandler_1.asyncHandler)((req, res) => _
         });
     });
     return res.status(200).json(trending);
+}));
+// Get all complants grouped in departments
+exports.getComplaintsGroupedByDepartment = (0, asyncHandler_1.asyncHandler)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const complaints = yield prisma.complaint.findMany({
+        where: {}, // Optional filters (e.g., zoneId, status)
+    });
+    if (!complaints || complaints.length === 0) {
+        throw new asyncHandler_1.CustomError("No complaints found", 404);
+    }
+    const departmentMap = {
+        Sanitation_Department: [],
+        Water_Supply_Department: [],
+        Electricity_Department: [],
+        Roads___Infrastructure_Department: [],
+        Building___Town_Planning_Department: [],
+        Public_Health_Department: [],
+        Revenue___Property_Tax_Department: [],
+        Fire___Emergency_Services: [],
+        Environmental_Department: [],
+        Transport___Traffic_Department: [],
+        Public_Works_Department: [],
+        Licensing___Trade_Department: [],
+    };
+    for (const complaint of complaints) {
+        const department = categoryToDepartment_1.categoryToDepartment[complaint.category];
+        if (department) {
+            departmentMap[department].push(Object.assign(Object.assign({}, complaint), { complaint_id: complaint.complaint_id, citizen_id: complaint.citizen_id, authority_id: complaint.authority_id }));
+        }
+    }
+    const departmentMapBigInt = (0, convertDepartmentMapToBigInteger_1.convertDepartmentMapToBigInteger)(departmentMap);
+    res.status(200).json({
+        success: true,
+        data: {
+            // raw: departmentMap, // native Prisma types
+            bigInteger: departmentMapBigInt, // converted to BigInteger instances
+        },
+    });
+}));
+// get complaints by department
+exports.getComplaintsByDepartment = (0, asyncHandler_1.asyncHandler)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { department_type: deptParam } = req.params;
+    const validDepartments = Object.values(client_1.department_type);
+    if (!validDepartments.includes(deptParam)) {
+        throw new asyncHandler_1.CustomError("Invalid department type", 400);
+    }
+    const complaints = yield prisma.complaint.findMany({});
+    const filteredComplaints = complaints.filter((complaint) => {
+        const department = categoryToDepartment_1.categoryToDepartment[complaint.category];
+        return department === deptParam;
+    });
+    if (filteredComplaints.length === 0) {
+        throw new asyncHandler_1.CustomError("No complaints found for this department", 404);
+    }
+    const filteredComplaintsWithBigInt = filteredComplaints.map((complaint) => (Object.assign(Object.assign({}, complaint), { complaint_id: (0, big_integer_1.default)(complaint.complaint_id), citizen_id: (0, big_integer_1.default)(complaint.citizen_id), authority_id: (0, big_integer_1.default)(complaint.authority_id) })));
+    res.status(200).json({
+        success: true,
+        data: filteredComplaintsWithBigInt,
+    });
 }));
 //# sourceMappingURL=complaintController.js.map

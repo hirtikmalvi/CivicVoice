@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateCitizenProfile = exports.getCitizenByUserId = exports.getCitizenById = exports.getCitizenProfile = exports.deleteCitizen = exports.registerCitizen = void 0;
+exports.getCitizenIdByUserId = exports.updateCitizenProfile = exports.getCitizenByUserId = exports.getCitizenById = exports.getCitizenProfile = exports.deleteCitizen = exports.registerCitizen = void 0;
 const big_integer_1 = __importDefault(require("big-integer"));
 const asyncHandler_1 = require("../middlewares/asyncHandler");
 const prismaClient_1 = __importDefault(require("../utils/prismaClient"));
@@ -139,6 +139,7 @@ exports.getCitizenById = (0, asyncHandler_1.asyncHandler)((req, res) => __awaite
             user_created_at: citizen.users.created_at,
             user_updated_at: citizen.users.updated_at,
         },
+        // users: {...citizen.users, user_id: bigInt(citizen.users.user_id)}
     });
 }));
 // Get Citizen from user_id.
@@ -225,4 +226,20 @@ exports.updateCitizenProfile = (0, asyncHandler_1.asyncHandler)((req, res) => __
         citizen: Object.assign(Object.assign({}, updatedCitizen), { citizen_id: (0, big_integer_1.default)(updatedCitizen.citizen_id), user_id: (0, big_integer_1.default)(updatedCitizen.user_id) }),
     });
 }));
+//helper function to get citizen_id by user_id
+const getCitizenIdByUserId = (userId) => __awaiter(void 0, void 0, void 0, function* () {
+    const citizen = yield prismaClient_1.default.citizen.findUnique({
+        where: {
+            user_id: BigInt(userId),
+        },
+        select: {
+            citizen_id: true,
+        },
+    });
+    if (!citizen) {
+        throw new asyncHandler_1.CustomError('Citizen not found for the given user_id', 404);
+    }
+    return (0, big_integer_1.default)(citizen.citizen_id);
+});
+exports.getCitizenIdByUserId = getCitizenIdByUserId;
 //# sourceMappingURL=citizenController.js.map

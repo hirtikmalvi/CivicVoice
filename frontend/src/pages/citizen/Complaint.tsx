@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import axios from "../../api/axiosInstance"; // adjust if your path is different
+import axios from "../../api/axiosInstance"; 
 
 interface Media {
   media_id: string;
@@ -37,7 +37,7 @@ const Complaint: React.FC = () => {
         const response = await axios.get(`/api/complaints/${complaintId}`);
         console.log(response.data);
         setComplaint(response.data);
-        setMedia(response.data.media || []);
+        setMedia(response.data.complaint_media || []);
       } catch (error) {
         console.error("Failed to fetch complaint details", error);
       } finally {
@@ -146,7 +146,7 @@ const Complaint: React.FC = () => {
                 <div className="row g-3">
                   {media.map((item) => (
                     <div className="col-md-4 col-sm-6" key={item.media_id}>
-                      {item.media_type === "image" ? (
+                      {(/\.(jpg|jpeg|png)$/i).test(item.media_url) ? (
                         <div className="card h-100">
                           <img
                             src={item.media_url}
