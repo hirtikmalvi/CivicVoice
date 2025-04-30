@@ -25,7 +25,7 @@ app.use(express.urlencoded({ extended: true }));
 // Allow requests from your frontend
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: "https://civic-voice-six.vercel.app",
     credentials: true, // if you're sending cookies or authorization headers
   })
 );
