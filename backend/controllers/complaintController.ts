@@ -260,24 +260,51 @@ export const createComplaint = asyncHandler(
 
     // Transcribe audio if present
     if (audioFile) {
-      const transcribedText = await transcribeAudio(
-        audioFile.buffer,
-        audioFile.mimetype
-      );
-      complaintText += ` ${transcribedText}`;
+      try {
+        const transcribedText = await transcribeAudio(
+          audioFile.buffer,
+          audioFile.mimetype
+        );
+        complaintText += ` ${transcribedText}`;
+      } catch (error) {
+        console.error("Audio transcription error:", error);
+        throw new CustomError("Failed to process audio. Please try again.", 500);
+      }
     }
 
-    // Ensure complaint text is present
-    if (!complaintText) {
-      throw new CustomError("No description or audio provided!", 400);
+    // Check if there's any content to work with
+    if (!complaintText && mediaFiles.length === 0) {
+      throw new CustomError("No description, audio, or media provided!", 400);
     }
 
-    // Generate AI-based description and title if not provided
-    if (!description) {
-      description = await generateDescriptionFromContext(complaintText);
+    // Always generate AI-enhanced description from context
+    try {
+      // Use existing description as seed for AI enhancement
+      const enhancedDescription = await generateDescriptionFromContext(complaintText);
+
+      // If we had original text content, append the AI generation
+      if (complaintText.trim()) {
+        description = `${complaintText}\n\nAI Enhanced Analysis: ${enhancedDescription}`;
+      } else {
+        description = enhancedDescription;
+      }
+    } catch (error) {
+      console.error("Error generating description:", error);
+      // If AI fails, use original description if available
+      if (!description) {
+        description = complaintText || "No text description available";
+      }
     }
-    if (!title) {
-      title = await generateTitleFromContext(description);
+
+    // Generate title if not provided
+    if (!title || title.trim() === "") {
+      try {
+        title = await generateTitleFromContext(description);
+      } catch (error) {
+        console.error("Error generating title:", error);
+        // Fallback title if AI fails
+        title = `Complaint on ${new Date().toLocaleDateString()}`;
+      }
     }
 
     // Save complaint in DB
@@ -296,46 +323,56 @@ export const createComplaint = asyncHandler(
 
     // Upload audio if present
     if (audioFile) {
-      const uploadResult = await uploadToCloudinary(
-        audioFile.buffer,
-        audioFile.mimetype,
-        "complaints"
-      );
-
-      const audioUrl = uploadResult.secure_url;
-      mediaUrls.push(audioUrl);
-
-      await prisma.complaint_media.create({
-        data: {
-          complaint_id: complaint.complaint_id,
-          media_url: uploadResult.secure_url,
-          media_type: "audio", // Using "video" instead of "audio" to pass the constraint
-        },
-      });
-    }
-
-    // Upload all image/video files to Cloudinary & store in DB
-    if (mediaFiles.length > 0) {
-      for (const mediaFile of mediaFiles) {
+      try {
         const uploadResult = await uploadToCloudinary(
-          mediaFile.buffer,
-          mediaFile.mimetype,
+          audioFile.buffer,
+          audioFile.mimetype,
           "complaints"
         );
 
-        mediaUrls.push(uploadResult.secure_url);
-
-        let mediaType = mediaFile.mimetype.startsWith("image")
-          ? "image"
-          : "video";
+        const audioUrl = uploadResult.secure_url;
+        mediaUrls.push(audioUrl);
 
         await prisma.complaint_media.create({
           data: {
             complaint_id: complaint.complaint_id,
             media_url: uploadResult.secure_url,
-            media_type: mediaType,
+            media_type: "audio", // Using "video" instead of "audio" to pass the constraint
           },
         });
+      } catch (error) {
+        console.error("Audio upload error:", error);
+        // Continue processing without failing the entire request
+      }
+    }
+
+    // Upload all image/video files to Cloudinary & store in DB
+    if (mediaFiles.length > 0) {
+      for (const mediaFile of mediaFiles) {
+        try {
+          const uploadResult = await uploadToCloudinary(
+            mediaFile.buffer,
+            mediaFile.mimetype,
+            "complaints"
+          );
+
+          mediaUrls.push(uploadResult.secure_url);
+
+          let mediaType = mediaFile.mimetype.startsWith("image")
+            ? "image"
+            : "video";
+
+          await prisma.complaint_media.create({
+            data: {
+              complaint_id: complaint.complaint_id,
+              media_url: uploadResult.secure_url,
+              media_type: mediaType,
+            },
+          });
+        } catch (error) {
+          console.error("Media upload error:", error);
+          // Continue processing without failing the entire request
+        }
       }
     }
 
@@ -347,6 +384,10 @@ export const createComplaint = asyncHandler(
         complaint_id: bigInt(complaint.complaint_id),
         citizen_id: bigInt(complaint.citizen_id),
         mediaUrls,
+        auto_generated: {
+          title: !req.body.title || req.body.title.trim() === "",
+          description: true // Always enhanced with AI
+        }
       },
     });
   }
