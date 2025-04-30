@@ -15,6 +15,7 @@ import { getUserFromToken } from "../../hooks/useAuth";
 import axios from "../../api/axiosInstance";
 import CreateComplaint from "../citizen/CreateComplaint";
 import { Link } from "react-router-dom";
+import { log } from "console";
 
 interface Complaint {
   complaint_id: number;
@@ -239,6 +240,18 @@ const CitizenDashboard: React.FC = () => {
     }
   };
 
+  const handleDeleteComplaint = async (complaintId: number) => {
+    try {
+      console.log(complaintId);
+      await axios.delete(`/api/complaints/${complaintId}`);
+      // Refresh the complaints list
+      handleFetch();
+    } catch (error) {
+      console.error("Failed to delete complaint", error);
+      alert("Failed to delete the complaint.");
+    }
+  };
+
   const renderComplaints = (complaints: Complaint[]) => (
     <Table striped bordered hover responsive className="mt-3">
       <thead>
@@ -300,7 +313,7 @@ const CitizenDashboard: React.FC = () => {
                 </Link>
               </td>
               <td>{new Date(c.created_at).toISOString().split("T")[0]}</td>
-              <td>
+              <td className="d-flex gap-2">
                 <Button
                   size="sm"
                   variant="outline-primary"
@@ -308,6 +321,22 @@ const CitizenDashboard: React.FC = () => {
                 >
                   👍 Upvote
                 </Button>
+
+                {view === "my" && (
+                  <Button
+                    size="sm"
+                    variant="outline-danger"
+                    onClick={() => {
+                      var result = window.confirm("Want to delete?");
+                      if (result) {
+                        //Logic to delete the item
+                        handleDeleteComplaint(c.complaint_id);
+                      }
+                    }}
+                  >
+                    🗑 Delete
+                  </Button>
+                )}
               </td>
             </tr>
           ))

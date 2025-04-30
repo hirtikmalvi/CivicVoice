@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import axios from "../../api/axiosInstance";
@@ -39,10 +39,9 @@ const CreateComplaint: React.FC<CreateComplaintProps> = ({
   const [categories, setCategories] = useState<Category[]>([]);
   const [audioRecording, setAudioRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
-    null
-  );
-  const [stopTimer, setStopTimer] = useState<NodeJS.Timeout | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const stopTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
@@ -62,16 +61,45 @@ const CreateComplaint: React.FC<CreateComplaintProps> = ({
         const userId = user?.user_id;
 
         const response = await axios.get(`/api/citizen/user/${userId}`);
-        console.log("Response: ", response);
         setCitizen_id(response.data.citizen.citizen_id);
       } catch (error) {
         console.error("Failed to fetch citizen ID", error);
-        return null;
       }
     };
-    fetchCitizenId()
+
+    fetchCitizenId();
     fetchCategories();
+
+    // Cleanup function to handle component unmount
+    return () => {
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+      }
+      if (stopTimerRef.current) {
+        clearTimeout(stopTimerRef.current);
+      }
+      if (
+        mediaRecorderRef.current &&
+        mediaRecorderRef.current.state === "recording"
+      ) {
+        mediaRecorderRef.current.stop();
+      }
+    };
   }, []);
+
+  // Clean up audioUrl when audioBlob changes
+  useEffect(() => {
+    if (audioBlob) {
+      const url = URL.createObjectURL(audioBlob);
+      setAudioUrl(url);
+
+      return () => {
+        if (url) URL.revokeObjectURL(url);
+      };
+    } else {
+      setAudioUrl(null);
+    }
+  }, [audioBlob]);
 
   const handleLocationClick = () => {
     if (!navigator.geolocation) {
@@ -113,20 +141,20 @@ const CreateComplaint: React.FC<CreateComplaintProps> = ({
         setAudioBlob(blob);
         stream.getTracks().forEach((track) => track.stop());
         toast.success("Audio recorded!");
+        setAudioRecording(false);
       };
 
       recorder.start();
-      setMediaRecorder(recorder);
+      mediaRecorderRef.current = recorder;
       setAudioRecording(true);
 
       const timeout = setTimeout(() => {
         if (recorder.state === "recording") {
           recorder.stop();
-          setAudioRecording(false);
         }
       }, MAX_AUDIO_DURATION_MS);
 
-      setStopTimer(timeout);
+      stopTimerRef.current = timeout;
     } catch (err) {
       toast.error("Failed to access microphone.");
       setAudioRecording(false);
@@ -134,19 +162,21 @@ const CreateComplaint: React.FC<CreateComplaintProps> = ({
   };
 
   const handleStopRecording = () => {
-    if (mediaRecorder?.state === "recording") {
-      mediaRecorder.stop();
-      setAudioRecording(false);
-      if (stopTimer) {
-        clearTimeout(stopTimer);
-        setStopTimer(null);
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
+      if (stopTimerRef.current) {
+        clearTimeout(stopTimerRef.current);
+        stopTimerRef.current = null;
       }
     }
   };
 
   const handleRemoveRecording = () => {
+    if (audioUrl) {
+      URL.revokeObjectURL(audioUrl);
+    }
     setAudioBlob(null);
-    setAudioRecording(false);
+    setAudioUrl(null);
     toast.info("Audio recording removed.");
   };
 
@@ -223,7 +253,6 @@ const CreateComplaint: React.FC<CreateComplaintProps> = ({
           type: "audio/wav",
         });
         formData.append("file", audioFile);
-        console.log("Audio file appended to FormData:", audioFile); // Debugging line
       } catch (audioError) {
         console.error("Error creating audio file:", audioError);
         toast.error("Failed to prepare audio file.");
@@ -231,13 +260,8 @@ const CreateComplaint: React.FC<CreateComplaintProps> = ({
       }
     }
 
-    // Log FormData contents for debugging
-    for (const pair of formData.entries()) {
-      console.log(pair[0] + ", " + pair[1]);
-    }
-
     try {
-      const response = await axios.post("/api/complaints", formData, {
+      await axios.post("/api/complaints", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -246,6 +270,8 @@ const CreateComplaint: React.FC<CreateComplaintProps> = ({
       toast.success("Complaint submitted successfully!");
       onComplaintCreated();
       onClose();
+
+      // Reset form
       setTitle("");
       setDescription("");
       setCategory("");
@@ -253,21 +279,21 @@ const CreateComplaint: React.FC<CreateComplaintProps> = ({
       setLatitude(null);
       setLongitude(null);
       setMediaFiles([]);
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+      }
       setAudioBlob(null);
+      setAudioUrl(null);
       setFormErrors({});
     } catch (error: any) {
       console.error("API Error:", error);
-      if (error.response) {
-        console.error("Response Data:", error.response.data);
-        console.error("Response Status:", error.response.status);
-      }
       toast.error("Something went wrong submitting complaint.");
     }
   };
 
   return (
     <div style={styles.container}>
-      <ToastContainer />
+      <ToastContainer limit={3} />
       <div style={styles.card}>
         <h2 style={styles.heading}>📣 File a New Complaint</h2>
         <form onSubmit={handleSubmit} style={styles.form}>
@@ -306,9 +332,9 @@ const CreateComplaint: React.FC<CreateComplaintProps> = ({
             <div style={styles.error}>{formErrors.description}</div>
           )}
           <div style={styles.audioSection}>
-            {audioBlob ? (
+            {audioBlob && audioUrl ? (
               <>
-                <audio controls src={URL.createObjectURL(audioBlob)} />
+                <audio controls src={audioUrl} />
                 <button
                   type="button"
                   onClick={handleRemoveRecording}
@@ -321,7 +347,7 @@ const CreateComplaint: React.FC<CreateComplaintProps> = ({
               <button
                 type="button"
                 onClick={handleStopRecording}
-                style={styles.button}
+                style={{ ...styles.button, backgroundColor: "#dc3545" }}
               >
                 Stop Recording
               </button>
