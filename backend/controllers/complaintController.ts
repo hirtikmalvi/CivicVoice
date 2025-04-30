@@ -275,8 +275,10 @@ export const createComplaint = asyncHandler(
     // Generate AI-based description and title if not provided
     if (!description) {
       description = await generateDescriptionFromContext(complaintText);
-      title = await generateTitleFromContext(description);
     }
+    // if (!title) {
+      title = await generateTitleFromContext(description);
+    // }
 
     // Save complaint in DB
     const complaint = await prisma.complaint.create({
