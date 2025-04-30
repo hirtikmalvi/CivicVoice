@@ -275,8 +275,6 @@ export const createComplaint = asyncHandler(
     // Generate AI-based description and title if not provided
     if (!description) {
       description = await generateDescriptionFromContext(complaintText);
-    }
-    if (!title) {
       title = await generateTitleFromContext(description);
     }
 
