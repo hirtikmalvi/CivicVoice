@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Container,
   Button,
@@ -15,6 +15,8 @@ import { getUserFromToken } from "../../hooks/useAuth";
 import axios from "../../api/axiosInstance";
 import CreateComplaint from "../citizen/CreateComplaint";
 import { Link } from "react-router-dom";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 interface Complaint {
   complaint_id: number;
@@ -24,6 +26,7 @@ interface Complaint {
   citizen_name: string;
   created_at: string;
   citizen_id: number;
+  isUpvoted?: boolean;
 }
 
 interface CitizenInfo {
@@ -32,180 +35,241 @@ interface CitizenInfo {
   fullName: string;
 }
 
+interface ComplaintsState {
+  my: Complaint[];
+  all: Complaint[];
+  trending: Complaint[];
+  lastFetched: {
+    my: number | null;
+    all: number | null;
+    trending: number | null;
+  };
+}
+
 const CitizenDashboard: React.FC = () => {
   const user = getUserFromToken();
   const navigate = useNavigate();
   const [view, setView] = useState<"my" | "all" | "trending">("my");
   const [showComplaintModal, setShowComplaintModal] = useState(false);
-  const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(false);
   const [citizenInfo, setCitizenInfo] = useState<CitizenInfo | null>(null);
-  // const [citizen, setCitizen] = useState
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [complaintToDelete, setComplaintToDelete] = useState<number | null>(
+    null
+  );
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [initialDataLoaded, setInitialDataLoaded] = useState(false);
 
-  const fetchComplaints = async (citizenId: number | string) => {
-    setLoading(true);
+  // Store complaints for each view type separately
+  const [complaintsState, setComplaintsState] = useState<ComplaintsState>({
+    my: [],
+    all: [],
+    trending: [],
+    lastFetched: {
+      my: null,
+      all: null,
+      trending: null,
+    },
+  });
+
+  // Cache timeout in milliseconds (e.g., 5 minutes)
+  const CACHE_TIMEOUT = 5 * 60 * 1000;
+
+  const isCacheValid = (viewType: "my" | "all" | "trending") => {
+    const lastFetched = complaintsState.lastFetched[viewType];
+    if (!lastFetched) return false;
+
+    const now = Date.now();
+    return now - lastFetched < CACHE_TIMEOUT;
+  };
+
+  const fetchCitizenInfo = useCallback(
+    async (userId: string | number | undefined) => {
+      if (!userId) return;
+
+      try {
+        const response = await axios.get(`/api/citizen/user/${userId}`);
+        const citizenData = {
+          citizen_id: response.data.citizen.citizen_id,
+          user_id: response.data.citizen.user_id,
+          fullName: response.data.citizen.fullname,
+        };
+        setCitizenInfo(citizenData);
+        return citizenData.citizen_id;
+      } catch (error) {
+        console.error("Failed to fetch citizen ID", error);
+        return null;
+      }
+    },
+    []
+  );
+
+  const enhanceComplaintWithDetails = useCallback(
+    async (complaint: Complaint, currentCitizenId?: string) => {
+      try {
+        const [upvotesResponse, citizenResponse] = await Promise.all([
+          axios.get(`/api/complaints/${complaint.complaint_id}/upvotes/count`),
+          axios.get(`/api/citizen/${complaint.citizen_id}`),
+        ]);
+
+        // Check if the current user has upvoted this complaint
+        let isUpvoted = false;
+        if (currentCitizenId) {
+          try {
+            const upvoteStatusResponse = await axios.get(
+              `/api/complaints/${complaint.complaint_id}/upvote/${currentCitizenId}`
+            );
+            isUpvoted = upvoteStatusResponse.data.upvoted || false;
+          } catch (error) {
+            console.error("Failed to check upvote status", error);
+          }
+        }
+
+        const citizenName = citizenResponse.data.citizen
+          ? citizenResponse.data.citizen.fullname
+          : "N/A";
+
+        return {
+          ...complaint,
+          upvotes: upvotesResponse.data.count,
+          citizen_name: citizenName,
+          isUpvoted: isUpvoted,
+        };
+      } catch (error) {
+        console.error(
+          `Failed to enhance complaint ${complaint.complaint_id}`,
+          error
+        );
+        return complaint;
+      }
+    },
+    []
+  );
+
+  const fetchMyComplaints = useCallback(async () => {
+    if (!citizenInfo?.citizen_id) return [];
+
     try {
-      const response = await axios.get(`/api/complaints/citizen/${citizenId}`);
-      // Ensure the response data is an array
+      const response = await axios.get(
+        `/api/complaints/citizen/${citizenInfo.citizen_id}`
+      );
       const complaintData = Array.isArray(response.data) ? response.data : [];
 
-      // Fetch additional data for each complaint
-      const complaintsWithData = await Promise.all(
-        complaintData.map(async (complaint: Complaint) => {
-          const upvotesResponse = await axios.get(
-            `/api/complaints/${complaint.complaint_id}/upvotes/count`
-          );
-          const citizenResponse = await axios.get(
-            `/api/citizen/${complaint.citizen_id}`
-          );
-
-          // Extract citizen name from the response
-          const citizenName = citizenResponse.data.citizen
-            ? citizenResponse.data.citizen.fullname
-            : "N/A";
-
-          return {
-            ...complaint,
-            upvotes: upvotesResponse.data.count,
-            citizen_name: citizenName,
-          };
-        })
+      const enhancedComplaints = await Promise.all(
+        complaintData.map((complaint) =>
+          enhanceComplaintWithDetails(complaint, citizenInfo.citizen_id)
+        )
       );
 
-      setComplaints(complaintsWithData);
+      return enhancedComplaints;
     } catch (error) {
-      console.error("Failed to load complaints", error);
-      setComplaints([]);
-    } finally {
-      setLoading(false);
+      console.error("Failed to load my complaints", error);
+      return [];
     }
-  };
+  }, [citizenInfo, enhanceComplaintWithDetails]);
 
-  const fetchCitizenInfo = async (userId: string | number | undefined) => {
-    if (!userId) return;
-
-    try {
-      const response = await axios.get(`/api/citizen/user/${userId}`);
-      setCitizenInfo({
-        citizen_id: response.data.citizen.citizen_id,
-        user_id: response.data.citizen.user_id,
-        fullName: response.data.citizen.fullname,
-      });
-      return response.data.citizen.citizen_id;
-    } catch (error) {
-      console.error("Failed to fetch citizen ID", error);
-      return null;
-    }
-  };
-
-  const handleFetchMyComplaints = async () => {
-    setLoading(true);
-
-    try {
-      const userId = user?.user_id;
-      const citizenId = await fetchCitizenInfo(userId);
-      if (citizenId) {
-        await fetchComplaints(citizenId);
-      } else {
-        setComplaints([]);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleFetchAllComplaints = async () => {
-    setLoading(true);
+  const fetchAllComplaints = useCallback(async () => {
     try {
       const response = await axios.get("/api/complaints");
       const complaintData = Array.isArray(response.data) ? response.data : [];
 
-      const complaintsWithData = await Promise.all(
-        complaintData.map(async (complaint: Complaint) => {
-          const upvotesResponse = await axios.get(
-            `/api/complaints/${complaint.complaint_id}/upvotes/count`
-          );
-          const citizenResponse = await axios.get(
-            `/api/citizen/${complaint.citizen_id}`
-          );
-
-          const citizenName = citizenResponse.data.citizen
-            ? citizenResponse.data.citizen.fullname
-            : "N/A";
-
-          return {
-            ...complaint,
-            upvotes: upvotesResponse.data.count,
-            citizen_name: citizenName,
-          };
-        })
+      const enhancedComplaints = await Promise.all(
+        complaintData.map((complaint) =>
+          enhanceComplaintWithDetails(complaint, citizenInfo?.citizen_id)
+        )
       );
 
-      setComplaints(complaintsWithData);
+      return enhancedComplaints;
     } catch (error) {
       console.error("Failed to load all complaints", error);
-      setComplaints([]);
-    } finally {
-      setLoading(false);
+      return [];
     }
-  };
+  }, [citizenInfo, enhanceComplaintWithDetails]);
 
-  const handleFetchTrendingComplaints = async () => {
-    setLoading(true);
+  const fetchTrendingComplaints = useCallback(async () => {
     try {
       const response = await axios.get("/api/complaints/trending");
       const complaintData = Array.isArray(response.data) ? response.data : [];
 
-      const complaintsWithData = await Promise.all(
-        complaintData.map(async (complaint: Complaint) => {
-          const upvotesResponse = await axios.get(
-            `/api/complaints/${complaint.complaint_id}/upvotes/count`
-          );
-          const citizenResponse = await axios.get(
-            `/api/citizen/${complaint.citizen_id}`
-          );
-
-          const citizenName = citizenResponse.data.citizen
-            ? citizenResponse.data.citizen.fullname
-            : "N/A";
-
-          return {
-            ...complaint,
-            upvotes: upvotesResponse.data.count,
-            citizen_name: citizenName,
-          };
-        })
+      const enhancedComplaints = await Promise.all(
+        complaintData.map((complaint) =>
+          enhanceComplaintWithDetails(complaint, citizenInfo?.citizen_id)
+        )
       );
 
-      setComplaints(complaintsWithData);
+      return enhancedComplaints;
     } catch (error) {
       console.error("Failed to load trending complaints", error);
-      setComplaints([]);
+      return [];
+    }
+  }, [citizenInfo, enhanceComplaintWithDetails]);
+
+  // Fetch data based on the current view if needed
+  const fetchDataIfNeeded = useCallback(async () => {
+    if (loading) return;
+
+    // Skip if cache is still valid
+    if (isCacheValid(view)) {
+      if (!initialDataLoaded) {
+        setInitialDataLoaded(true);
+      }
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      let complaints: Complaint[] = [];
+
+      switch (view) {
+        case "my":
+          complaints = await fetchMyComplaints();
+          break;
+        case "all":
+          complaints = await fetchAllComplaints();
+          break;
+        case "trending":
+          complaints = await fetchTrendingComplaints();
+          break;
+      }
+
+      setComplaintsState((prevState) => ({
+        ...prevState,
+        [view]: complaints,
+        lastFetched: {
+          ...prevState.lastFetched,
+          [view]: Date.now(),
+        },
+      }));
+
+      if (!initialDataLoaded) {
+        setInitialDataLoaded(true);
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [
+    view,
+    loading,
+    initialDataLoaded,
+    fetchMyComplaints,
+    fetchAllComplaints,
+    fetchTrendingComplaints,
+  ]);
 
-  const handleFetch = () => {
-    if (view === "my") {
-      handleFetchMyComplaints();
-    } else if (view === "all") {
-      handleFetchAllComplaints();
-    } else if (view === "trending") {
-      handleFetchTrendingComplaints();
-    }
-  };
-
+  // Fetch citizen info only once when component mounts
   useEffect(() => {
-    // Fetch citizen info when component mounts
-    if (user?.user_id) {
+    if (user?.user_id && !citizenInfo) {
       fetchCitizenInfo(user.user_id);
     }
-  }, [user]);
+  }, [user, fetchCitizenInfo, citizenInfo]);
 
+  // Fetch data when citizen info is available or view changes
   useEffect(() => {
-    handleFetch();
-  }, [view]);
+    if (citizenInfo) {
+      fetchDataIfNeeded();
+    }
+  }, [view, citizenInfo, fetchDataIfNeeded]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -220,23 +284,122 @@ const CitizenDashboard: React.FC = () => {
 
   const handleComplaintCreated = () => {
     setShowComplaintModal(false);
-    handleFetch();
+
+    // Invalidate the cache for "my" and "all" views
+    setComplaintsState((prevState) => ({
+      ...prevState,
+      lastFetched: {
+        ...prevState.lastFetched,
+        my: null,
+        all: null,
+      },
+    }));
+
+    // Refetch data for the current view
+    fetchDataIfNeeded();
   };
 
-  const handleUpvote = async (complaintId: number, citizenId: number) => {
+  const handleVote = async (
+    complaintId: number,
+    citizenId: number,
+    isCurrentlyUpvoted: boolean
+  ) => {
     try {
-      await axios.post(`/api/complaints/${complaintId}/upvote`, {
-        citizen_id: citizenId,
-      });
-      // Optimistically update the upvotes count
-      setComplaints((prev) =>
-        prev.map((c) =>
-          c.complaint_id === complaintId ? { ...c, upvotes: c.upvotes + 1 } : c
-        )
-      );
+      if (isCurrentlyUpvoted) {
+        // If already upvoted, perform downvote
+        await axios.delete(
+          `/api/complaints/${complaintId}/upvote/${citizenId}`
+        );
+
+        // Update all lists that might contain this complaint
+        setComplaintsState((prevState) => ({
+          ...prevState,
+          my: updateComplaintInList(prevState.my, complaintId, false),
+          all: updateComplaintInList(prevState.all, complaintId, false),
+          trending: updateComplaintInList(
+            prevState.trending,
+            complaintId,
+            false
+          ),
+        }));
+
+        toast.success("Vote removed successfully!");
+      } else {
+        // If not upvoted, perform upvote
+        await axios.post(`/api/complaints/${complaintId}/upvote`, {
+          citizen_id: citizenId,
+        });
+
+        // Update all lists that might contain this complaint
+        setComplaintsState((prevState) => ({
+          ...prevState,
+          my: updateComplaintInList(prevState.my, complaintId, true),
+          all: updateComplaintInList(prevState.all, complaintId, true),
+          trending: updateComplaintInList(
+            prevState.trending,
+            complaintId,
+            true
+          ),
+        }));
+
+        toast.success("Upvoted successfully!");
+      }
     } catch (err) {
-      console.error("Failed to upvote", err);
+      console.error("Failed to handle vote", err);
+      toast.error("Failed to process your vote. Please try again.");
     }
+  };
+
+  // Function to handle the delete complaint confirmation
+  const confirmDeleteComplaint = (complaintId: number) => {
+    setComplaintToDelete(complaintId);
+    setShowDeleteModal(true);
+  };
+
+  // Function to execute the delete complaint
+  const handleDeleteComplaint = async () => {
+    if (!complaintToDelete) return;
+
+    setDeleteLoading(true);
+    try {
+      await axios.delete(`/api/complaints/${complaintToDelete}`);
+
+      // Remove the deleted complaint from all lists
+      setComplaintsState((prevState) => ({
+        ...prevState,
+        my: prevState.my.filter((c) => c.complaint_id !== complaintToDelete),
+        all: prevState.all.filter((c) => c.complaint_id !== complaintToDelete),
+        trending: prevState.trending.filter(
+          (c) => c.complaint_id !== complaintToDelete
+        ),
+      }));
+
+      toast.success("Complaint deleted successfully!");
+      setShowDeleteModal(false);
+    } catch (err) {
+      console.error("Failed to delete complaint", err);
+      toast.error("Failed to delete the complaint. Please try again.");
+    } finally {
+      setDeleteLoading(false);
+      setComplaintToDelete(null);
+    }
+  };
+
+  // Helper function to update a complaint in a list
+  const updateComplaintInList = (
+    list: Complaint[],
+    complaintId: number,
+    isUpvoted: boolean
+  ): Complaint[] => {
+    return list.map((c) =>
+      c.complaint_id === complaintId
+        ? {
+            ...c,
+            upvotes: isUpvoted ? c.upvotes + 1 : Math.max(0, c.upvotes - 1),
+            isUpvoted: isUpvoted,
+          }
+        : c
+    );
   };
 
   const renderComplaints = (complaints: Complaint[]) => (
@@ -301,13 +464,34 @@ const CitizenDashboard: React.FC = () => {
               </td>
               <td>{new Date(c.created_at).toISOString().split("T")[0]}</td>
               <td>
-                <Button
-                  size="sm"
-                  variant="outline-primary"
-                  onClick={() => handleUpvote(c.complaint_id, c.citizen_id)}
-                >
-                  👍 Upvote
-                </Button>
+                <div className="d-flex gap-2">
+                  {citizenInfo?.citizen_id && (
+                    <Button
+                      size="sm"
+                      variant={c.isUpvoted ? "primary" : "outline-primary"}
+                      onClick={() =>
+                        handleVote(
+                          c.complaint_id,
+                          Number(citizenInfo.citizen_id),
+                          !!c.isUpvoted
+                        )
+                      }
+                    >
+                      {c.isUpvoted ? "👎 Remove Vote" : "👍 Upvote"}
+                    </Button>
+                  )}
+
+                  {/* Delete button - always shown for user's own complaints */}
+                  {String(c.citizen_id) === citizenInfo?.citizen_id && (
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => confirmDeleteComplaint(c.complaint_id)}
+                    >
+                      Delete
+                    </Button>
+                  )}
+                </div>
               </td>
             </tr>
           ))
@@ -316,8 +500,30 @@ const CitizenDashboard: React.FC = () => {
     </Table>
   );
 
+  // Force refresh button handler
+  const handleRefresh = () => {
+    // Invalidate the cache for the current view
+    setComplaintsState((prevState) => ({
+      ...prevState,
+      lastFetched: {
+        ...prevState.lastFetched,
+        [view]: null,
+      },
+    }));
+
+    // Fetch fresh data
+    fetchDataIfNeeded();
+  };
+
+  // Show cached data immediately if available while loading fresh data in background
+  const currentViewComplaints = complaintsState[view];
+  const shouldShowSpinner =
+    loading && currentViewComplaints.length === 0 && !initialDataLoaded;
+
   return (
     <>
+      <ToastContainer position="top-right" autoClose={3000} />
+
       <Navbar expand="lg" className="px-4 bg-light shadow-sm">
         <Navbar.Brand>CivicVoice</Navbar.Brand>
         <Navbar.Toggle />
@@ -338,6 +544,14 @@ const CitizenDashboard: React.FC = () => {
           </Nav>
           <div className="d-flex gap-2">
             <Button
+              variant="outline-secondary"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={loading}
+            >
+              {loading ? <Spinner animation="border" size="sm" /> : "↻ Refresh"}
+            </Button>
+            <Button
               variant="outline-primary"
               onClick={() => setShowComplaintModal(true)}
             >
@@ -348,7 +562,6 @@ const CitizenDashboard: React.FC = () => {
                 variant="outline-secondary"
                 id="profile-dropdown"
               >
-                {/* {"User"} */}
                 {citizenInfo?.fullName || "User"}
               </Dropdown.Toggle>
               <Dropdown.Menu align="end">
@@ -362,7 +575,7 @@ const CitizenDashboard: React.FC = () => {
       </Navbar>
 
       <Container className="mt-4">
-        {loading ? (
+        {shouldShowSpinner ? (
           <div className="text-center my-4">
             <Spinner animation="border" variant="primary" />
           </div>
@@ -374,8 +587,16 @@ const CitizenDashboard: React.FC = () => {
                 : view === "all"
                 ? "All Complaints"
                 : "🔥 Trending Complaints"}
+              {loading && (
+                <Spinner
+                  animation="border"
+                  size="sm"
+                  className="ms-2"
+                  style={{ width: "1rem", height: "1rem" }}
+                />
+              )}
             </h4>
-            {renderComplaints(complaints)}
+            {renderComplaints(currentViewComplaints)}
           </>
         )}
       </Container>
@@ -395,6 +616,40 @@ const CitizenDashboard: React.FC = () => {
             onComplaintCreated={handleComplaintCreated}
           />
         </Modal.Body>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        show={showDeleteModal}
+        onHide={() => setShowDeleteModal(false)}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Confirm Deletion</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          Are you sure you want to delete this complaint? This action cannot be
+          undone.
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={handleDeleteComplaint}
+            disabled={deleteLoading}
+          >
+            {deleteLoading ? (
+              <>
+                <Spinner animation="border" size="sm" className="me-2" />
+                Deleting...
+              </>
+            ) : (
+              "Delete Complaint"
+            )}
+          </Button>
+        </Modal.Footer>
       </Modal>
     </>
   );

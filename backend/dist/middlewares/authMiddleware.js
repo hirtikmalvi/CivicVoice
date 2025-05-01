@@ -19,6 +19,7 @@ const prismaClient_1 = __importDefault(require("../utils/prismaClient"));
 const isAuthenticated = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const token = req.cookies.token;
+        console.log("req.cookies.token: ", req.cookies.token);
         if (!token) {
             throw new asyncHandler_1.CustomError("Not authenticated. Please login.", 401);
         }

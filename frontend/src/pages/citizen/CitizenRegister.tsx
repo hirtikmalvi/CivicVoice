@@ -144,7 +144,7 @@ const CitizenRegister: React.FC = () => {
 
       // Navigate to login page after successful registration
       setTimeout(() => {
-        navigate("/citizen/login");
+        navigate("/login");
       }, 2000);
     } catch (error: any) {
       console.error("Registration error:", error);

@@ -21,5 +21,8 @@ router.delete("/delete", authMiddleware_1.isAuthenticated, isAuthority_1.isAutho
 router.get("/me", authMiddleware_1.isAuthenticated, isAuthority_1.isAuthority, authorityController_1.getAuthorityProfile);
 //update authority
 router.put("/update", authMiddleware_1.isAuthenticated, isAuthority_1.isAuthority, authorityController_1.updateAuthorityProfile);
+router.get("/:authority_id", authorityController_1.getAuthorityById);
+//get authority by user_id
+router.get("/user/:user_id", authorityController_1.getAuthorityByUserId);
 exports.default = router;
 //# sourceMappingURL=authorityRoutes.js.map

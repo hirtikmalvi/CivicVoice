@@ -15,6 +15,7 @@ export const isAuthenticated = async (
 ) => {
   try {
     const token = req.cookies.token;
+    console.log("req.cookies.token: ", req.cookies.token);
 
     if (!token) {
       throw new CustomError("Not authenticated. Please login.", 401);
