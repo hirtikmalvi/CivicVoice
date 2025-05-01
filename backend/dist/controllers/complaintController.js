@@ -172,7 +172,7 @@ exports.createComplaint = (0, asyncHandler_1.asyncHandler)((req, res) => __await
     // Transcribe audio if present
     if (audioFile) {
         const transcribedText = yield (0, transcribeHelper_1.transcribeAudio)(audioFile.buffer, audioFile.mimetype);
-        complaintText += ` ${transcribedText}`;
+        complaintText = ` ${transcribedText}`;
     }
     // Ensure complaint text is present
     if (!complaintText) {
@@ -182,9 +182,9 @@ exports.createComplaint = (0, asyncHandler_1.asyncHandler)((req, res) => __await
     if (!description) {
         description = yield (0, complaintHelpter_1.generateDescriptionFromContext)(complaintText);
     }
-    if (!title) {
-        title = yield (0, complaintHelpter_1.generateTitleFromContext)(description);
-    }
+    // if (!title) {
+    title = yield (0, complaintHelpter_1.generateTitleFromContext)(description);
+    // }
     // Save complaint in DB
     const complaint = yield prisma.complaint.create({
         data: {
@@ -406,7 +406,7 @@ exports.getTrendingComplaints = (0, asyncHandler_1.asyncHandler)((req, res) => _
     const totalUpvotes = recentComplaints.reduce((sum, c) => sum + c._count.upvoted_complaint, 0);
     const averageUpvotes = totalUpvotes / recentComplaints.length;
     const trending = recentComplaints
-        .filter((c) => c._count.upvoted_complaint)
+        .filter((c) => c._count.upvoted_complaint > averageUpvotes)
         .map((c) => {
         var _a, _b;
         return ({

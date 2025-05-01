@@ -276,7 +276,7 @@ export const createComplaint = asyncHandler(
         audioFile.buffer,
         audioFile.mimetype
       );
-      complaintText += ` ${transcribedText}`;
+      complaintText = ` ${transcribedText}`;
     }
 
     // Ensure complaint text is present
@@ -288,9 +288,9 @@ export const createComplaint = asyncHandler(
     if (!description) {
       description = await generateDescriptionFromContext(complaintText);
     }
-    if (!title) {
+    // if (!title) {
       title = await generateTitleFromContext(description);
-    }
+    // }
 
     // Save complaint in DB
     const complaint = await prisma.complaint.create({
@@ -364,6 +364,7 @@ export const createComplaint = asyncHandler(
   }
 );
 
+
 // Upvote a complaint
 export const upvoteComplaint = asyncHandler(
   async (req: Request, res: Response) => {
@@ -384,6 +385,7 @@ export const upvoteComplaint = asyncHandler(
     });
 
     if (existingUpvote) {
+      console.log("ExistingUpvote:", existingUpvote);
       throw new CustomError("You already upvoted this complaint", 409);
     }
 
@@ -617,7 +619,7 @@ export const getTrendingComplaints = asyncHandler(
     );
     const averageUpvotes = totalUpvotes / recentComplaints.length;
     const trending = recentComplaints
-      .filter((c) => c._count.upvoted_complaint)
+      .filter((c) => c._count.upvoted_complaint > averageUpvotes)
       .map((c) => ({
         complaint_id: Number(c.complaint_id),
         title: c.title,

@@ -20,138 +20,6 @@ import ComplaintDetails from "./pages/authority/ComplaintDetails";
 import AuthorityNavbar from "./pages/authority/AuthorityNavbar";
 import AuthorityProfile from "./pages/authority/AuthorityProfile";
 
-function App() {
-  return (
-    <Router>
-      <Routes>
-        {/* Public */}
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<CitizenLogin />} />
-        <Route path="/register" element={<CitizenRegister />} />
-        <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/authority/login" element={<AuthorityLogin />} />
-
-        {/* Protected Routes */}
-        <Route
-          path="/citizen/dashboard"
-          element={
-            <ProtectedRoute>
-              <CitizenDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/citizen/complaint/:complaintId"
-          element={
-            <ProtectedRoute>
-              <Complaint />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/citizen/profile/:citizenId"
-          element={
-            <ProtectedRoute>
-              <CitizenProfile />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/complaint"
-          element={
-            <ProtectedRoute>
-              <Complaint />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/dashboard"
-          element={
-            <ProtectedRoute>
-              <AdminDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/profile"
-          element={
-            <ProtectedRoute>
-              <AdminProfile />
-            </ProtectedRoute>
-          }
-        />
-        {/* <Route
-          path="/authority/dashboard"
-          element={
-            <ProtectedRoute>
-              <AuthorityDashboard />
-            </ProtectedRoute>
-          }
-        /> */}
-
-        <Route
-          path="/authority/*" element={
-            <ProtectedRoute>
-              <AuthorityNavbar />
-            </ProtectedRoute>
-          }
-        >
-            <Route
-                path="dashboard"
-                element={
-                <ProtectedRoute>
-                    <AuthorityDashboard />
-                </ProtectedRoute>
-                }
-            />
-            <Route
-                path="complaint/:id"
-                element={
-                <ProtectedRoute>
-                    <ComplaintDetails />
-                </ProtectedRoute>
-                }
-            />
-            <Route
-                path="profile"
-                element={
-                <ProtectedRoute>
-                    <AuthorityProfile />
-                </ProtectedRoute>
-                }
-            />
-
-        </Route>
-
-        {/* <Route path="/authority/*" element={<AuthorityNavbar />}>
-          <Route path="dashboard" element={<AuthorityDashboard />} />
-          <Route path="complaint/:id" element={<ComplaintDetails />} />
-          <Route path="profile" element={<AuthorityProfile />} />
-        </Route> */}
-
-        {/* Catch-All */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </Router>
-  );
-}
-
-export default App;
-
-{
-  /* Protected Citizen Routes */
-}
-
-
-
-
-
-
-
-
-
-
-
 // import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 // import Home from "./pages/Home";
@@ -189,7 +57,7 @@ export default App;
 //         <Route
 //           path="/citizen/dashboard"
 //           element={
-//             <ProtectedRoute role="citizen">
+//             <ProtectedRoute>
 //               <CitizenDashboard />
 //             </ProtectedRoute>
 //           }
@@ -197,15 +65,15 @@ export default App;
 //         <Route
 //           path="/citizen/complaint/:complaintId"
 //           element={
-//             <ProtectedRoute role="citizen" >
+//             <ProtectedRoute>
 //               <Complaint />
 //             </ProtectedRoute>
 //           }
 //         />
 //         <Route
-//           path="/citizen/profile"
+//           path="/citizen/profile/:citizenId"
 //           element={
-//             <ProtectedRoute role="citizen">
+//             <ProtectedRoute>
 //               <CitizenProfile />
 //             </ProtectedRoute>
 //           }
@@ -213,7 +81,7 @@ export default App;
 //         <Route
 //           path="/complaint"
 //           element={
-//             <ProtectedRoute role="citizen">
+//             <ProtectedRoute>
 //               <Complaint />
 //             </ProtectedRoute>
 //           }
@@ -221,7 +89,7 @@ export default App;
 //         <Route
 //           path="/admin/dashboard"
 //           element={
-//             <ProtectedRoute role="admin">
+//             <ProtectedRoute>
 //               <AdminDashboard />
 //             </ProtectedRoute>
 //           }
@@ -229,7 +97,7 @@ export default App;
 //         <Route
 //           path="/admin/profile"
 //           element={
-//             <ProtectedRoute role="admin">
+//             <ProtectedRoute>
 //               <AdminProfile />
 //             </ProtectedRoute>
 //           }
@@ -245,7 +113,7 @@ export default App;
 
 //         <Route
 //           path="/authority/*" element={
-//             <ProtectedRoute role="authority">
+//             <ProtectedRoute>
 //               <AuthorityNavbar />
 //             </ProtectedRoute>
 //           }
@@ -253,7 +121,7 @@ export default App;
 //             <Route
 //                 path="dashboard"
 //                 element={
-//                 <ProtectedRoute role="authority">
+//                 <ProtectedRoute>
 //                     <AuthorityDashboard />
 //                 </ProtectedRoute>
 //                 }
@@ -261,7 +129,7 @@ export default App;
 //             <Route
 //                 path="complaint/:id"
 //                 element={
-//                 <ProtectedRoute role="authority">
+//                 <ProtectedRoute>
 //                     <ComplaintDetails />
 //                 </ProtectedRoute>
 //                 }
@@ -269,7 +137,7 @@ export default App;
 //             <Route
 //                 path="profile"
 //                 element={
-//                 <ProtectedRoute role="authority">
+//                 <ProtectedRoute>
 //                     <AuthorityProfile />
 //                 </ProtectedRoute>
 //                 }
@@ -292,6 +160,139 @@ export default App;
 
 // export default App;
 
-// {
-//   /* Protected Citizen Routes */
-// }
+{
+  /* Protected Citizen Routes */
+}
+
+
+
+
+
+
+
+
+
+
+
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        {/* Public */}
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<CitizenLogin />} />
+        <Route path="/register" element={<CitizenRegister />} />
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/authority/login" element={<AuthorityLogin />} />
+
+        {/* Protected Routes */}
+        <Route
+          path="/citizen/dashboard"
+          element={
+            <ProtectedRoute role="citizen">
+              <CitizenDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/citizen/complaint/:complaintId"
+          element={
+            <ProtectedRoute role="citizen" >
+              <Complaint />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/citizen/profile/:citizenId"
+          element={
+            <ProtectedRoute role="citizen">
+              <CitizenProfile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/complaint"
+          element={
+            <ProtectedRoute role="citizen">
+              <Complaint />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedRoute role="admin">
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/profile"
+          element={
+            <ProtectedRoute role="admin">
+              <AdminProfile />
+            </ProtectedRoute>
+          }
+        />
+        {/* <Route
+          path="/authority/dashboard"
+          element={
+            <ProtectedRoute>
+              <AuthorityDashboard />
+            </ProtectedRoute>
+          }
+        /> */}
+
+        <Route
+          path="/authority/*" element={
+            <ProtectedRoute role="authority">
+              <AuthorityNavbar />
+            </ProtectedRoute>
+          }
+        >
+            <Route
+                path="dashboard"
+                element={
+                <ProtectedRoute role="authority">
+                    <AuthorityDashboard />
+                </ProtectedRoute>
+                }
+            />
+            <Route
+                path="complaint/:id"
+                element={
+                <ProtectedRoute role="authority">
+                    <ComplaintDetails />
+                </ProtectedRoute>
+                }
+            />
+            <Route
+                path="profile"
+                element={
+                <ProtectedRoute role="authority">
+                    <AuthorityProfile />
+                </ProtectedRoute>
+                }
+            />
+
+        </Route>
+
+        {/* <Route path="/authority/*" element={<AuthorityNavbar />}>
+          <Route path="dashboard" element={<AuthorityDashboard />} />
+          <Route path="complaint/:id" element={<ComplaintDetails />} />
+          <Route path="profile" element={<AuthorityProfile />} />
+        </Route> */}
+
+        {/* Catch-All */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Router>
+  );
+}
+
+export default App;
+
+{
+  /* Protected Citizen Routes */
+}
