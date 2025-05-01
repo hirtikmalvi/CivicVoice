@@ -1,4 +1,5 @@
 import {
+  complaint,
   complaint_category,
   complaint_status,
   department_type,
@@ -87,6 +88,78 @@ export const getComplaintsByCitizen = asyncHandler(async (req, res) => {
     }))
   );
 });
+
+// Utility function to convert BigInt values in an object to strings
+function serializeBigInt(obj: any) {
+  return JSON.parse(
+    JSON.stringify(obj, (_, value) =>
+      typeof value === 'bigint' ? value.toString() : value
+    )
+  );
+}
+
+export const getTrendingComplaints = asyncHandler(async (req: Request, res: Response) => {
+  const limit = parseInt(req.query.limit as string) || 10;
+  const page = parseInt(req.query.page as string) || 1;
+
+  const threeDaysAgo = new Date();
+  threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+
+  const recentComplaints: any = await prisma.$queryRaw`
+    SELECT 
+      c.*,
+      COUNT(uc.upvote_id) as upvote_count
+    FROM 
+      complaint c
+    LEFT JOIN 
+      upvoted_complaint uc ON c.complaint_id = uc.complaint_id
+    WHERE 
+      c.created_at >= ${threeDaysAgo}
+    GROUP BY 
+      c.complaint_id
+    ORDER BY
+      COUNT(uc.upvote_id) DESC,
+      c.created_at DESC
+  `;
+
+  if (!recentComplaints.length) {
+    throw new CustomError('No recent complaints found', 404);
+  }
+
+  const trendingComplaints = recentComplaints.map((complaint: any) => {
+    const hoursSincePosting =
+      (new Date().getTime() - new Date(complaint.created_at).getTime()) / (1000 * 60 * 60);
+
+    const upvoteScore = Number(complaint.upvote_count);
+    const recencyScore = Math.max(0, 72 - hoursSincePosting) / 72;
+
+    const trendingScore = (upvoteScore * 3) + (recencyScore * 2);
+
+    return {
+      ...complaint,
+      upvotes: upvoteScore,
+      trendingScore
+    };
+  });
+
+  const sortedComplaints = trendingComplaints.sort((a, b) =>
+    b.trendingScore - a.trendingScore
+  );
+
+  const skip = (page - 1) * limit;
+  const paginatedComplaints = sortedComplaints.slice(skip, skip + limit);
+
+  const serializedResponse = serializeBigInt({
+    trending: paginatedComplaints,
+    total: sortedComplaints.length,
+    page: page,
+    limit: limit,
+    totalPages: Math.ceil(sortedComplaints.length / limit)
+  });
+
+  return res.json(serializedResponse);
+});
+
 
 export const getComplaintsByCategory = asyncHandler(async (req, res) => {
   if (!Object.keys(complaint_category).includes(req.params.categoryName)) {
