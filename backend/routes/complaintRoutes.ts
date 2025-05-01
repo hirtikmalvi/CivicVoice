@@ -10,8 +10,10 @@ import {
   getComplaintsByAuthority,
   getComplaintsByCategory,
   getComplaintsByCitizen,
+  getComplaintsByDepartment,
   getComplaintsByStatus,
   getTrendingComplaints,
+  getComplaintsGroupedByDepartment,
   getUpvoteCountOfComplaint,
   removeUpvoteFromComplaint,
   updateComplaint,
@@ -88,5 +90,11 @@ router.delete("/:complaintId/media/:mediaId", deleteMediaFromComplaint);
 
 // Remove an upvote from a complaint by citizen
 router.delete("/:complaintId/upvote/:citizenId", removeUpvoteFromComplaint);
+
+// Complaints grouped by departments for all departments
+router.get("/by-department/all", getComplaintsGroupedByDepartment);
+
+//get complaint by department
+router.get("/department/:department_type", getComplaintsByDepartment);
 
 export default router;

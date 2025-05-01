@@ -13,6 +13,8 @@ const uploadMulter = (0, multer_1.default)();
 router.route("/").get(complaintController_1.getComplaints);
 // Get Complaints By CitizenId
 router.route("/citizen/:citizenId").get(complaintController_1.getComplaintsByCitizen);
+// Trending
+router.route("/trending").get(complaintController_1.getTrendingComplaints);
 // Get Complaint By Complaint ID
 router.route("/:complaintId").get(complaintController_1.getComplaintById);
 // Get Complaints By Category Name
@@ -47,5 +49,9 @@ router.delete("/:complaintId", complaintController_1.deleteComplaint);
 router.delete("/:complaintId/media/:mediaId", complaintController_1.deleteMediaFromComplaint);
 // Remove an upvote from a complaint by citizen
 router.delete("/:complaintId/upvote/:citizenId", complaintController_1.removeUpvoteFromComplaint);
+// Complaints grouped by departments for all departments
+router.get("/by-department/all", complaintController_1.getComplaintsGroupedByDepartment);
+//get complaint by department
+router.get("/department/:department_type", complaintController_1.getComplaintsByDepartment);
 exports.default = router;
 //# sourceMappingURL=complaintRoutes.js.map

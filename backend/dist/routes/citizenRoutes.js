@@ -15,10 +15,16 @@ router.post("/register", citizenController_1.registerCitizen);
 router.post("/login", authController_1.handleLogin);
 //logout
 router.post("/logout", authController_1.handleLogout);
-//delete 
+//delete
 router.delete("/delete", authMiddleware_1.isAuthenticated, isCitizen_1.isCitizen, citizenController_1.deleteCitizen);
 //get profile
 router.get("/me", authMiddleware_1.isAuthenticated, isCitizen_1.isCitizen, citizenController_1.getCitizenProfile);
+// get citizen by id
+router.get("/:citizen_id", citizenController_1.getCitizenById);
+// router.get("/:citizen_id", isAuthenticated, isCitizen, getCitizenById);
+// router.get("/:citizen_id", isAuthenticated, getCitizenById);
+//get citizen by user_id
+router.get("/user/:user_id", citizenController_1.getCitizenByUserId);
 //update profile
 router.put("/update", authMiddleware_1.isAuthenticated, isCitizen_1.isCitizen, citizenController_1.updateCitizenProfile);
 exports.default = router;

@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateAuthorityProfile = exports.getAuthorityProfile = exports.deleteAuthority = exports.registerAuthority = void 0;
+exports.getAuthorityByUserId = exports.getAuthorityById = exports.getDepartmentByUserId = exports.updateAuthorityProfile = exports.getAuthorityProfile = exports.deleteAuthority = exports.registerAuthority = void 0;
 const hashPassword_1 = require("../utils/hashPassword");
 const prismaClient_1 = __importDefault(require("../utils/prismaClient"));
 const asyncHandler_1 = require("../middlewares/asyncHandler");
@@ -134,6 +134,73 @@ exports.updateAuthorityProfile = (0, asyncHandler_1.asyncHandler)((req, res) => 
         message: "Authority profile updated successfully",
         user: Object.assign(Object.assign({}, updatedUser), { user_id: (0, big_integer_1.default)(updatedUser.user_id) }),
         authority: Object.assign(Object.assign({}, updatedAuthority), { authority_id: (0, big_integer_1.default)(updatedAuthority.authority_id), user_id: (0, big_integer_1.default)(updatedAuthority.user_id) }),
+    });
+}));
+// get department by user_id
+const getDepartmentByUserId = (userId) => __awaiter(void 0, void 0, void 0, function* () {
+    const authority = yield prismaClient_1.default.authority.findUnique({
+        where: {
+            user_id: BigInt(userId),
+        },
+        select: {
+            department: true,
+        },
+    });
+    if (!authority) {
+        throw new asyncHandler_1.CustomError('Authority not found for the given user_id', 404);
+    }
+    return (0, big_integer_1.default)(authority.department);
+});
+exports.getDepartmentByUserId = getDepartmentByUserId;
+//authority by id
+exports.getAuthorityById = (0, asyncHandler_1.asyncHandler)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const authorityId = req.params.authority_id;
+    if (!authorityId) {
+        throw new asyncHandler_1.CustomError("authority ID is required", 400);
+    }
+    const authority = yield prismaClient_1.default.authority.findUnique({
+        where: { authority_id: BigInt(authorityId) },
+        include: {
+            users: true,
+        },
+    });
+    if (!authority) {
+        throw new asyncHandler_1.CustomError("authority not found", 404);
+    }
+    res.status(200).json({
+        message: "authority fetched successfully",
+        authority: Object.assign(Object.assign({}, authority), { authority_id: (0, big_integer_1.default)(authority.authority_id), user_id: (0, big_integer_1.default)(authority.user_id), users: Object.assign(Object.assign({}, authority.users), { user_id: (0, big_integer_1.default)(authority.users.user_id) }) }),
+    });
+}));
+//get Authority by user_id
+//authority by id
+exports.getAuthorityByUserId = (0, asyncHandler_1.asyncHandler)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const user_id = req.params.user_id;
+    if (!user_id) {
+        throw new asyncHandler_1.CustomError("User ID is required", 400);
+    }
+    const authority = yield prismaClient_1.default.authority.findUnique({
+        where: { user_id: BigInt(user_id) },
+        include: {
+            users: true,
+        },
+    });
+    if (!authority) {
+        throw new asyncHandler_1.CustomError("authority not found", 404);
+    }
+    res.status(200).json({
+        message: "authority fetched successfully",
+        authority: {
+            authority_id: (0, big_integer_1.default)(authority.authority_id),
+            user_id: (0, big_integer_1.default)(authority.user_id),
+            department: authority.department,
+            zone: authority.zone,
+            fullname: authority.users.fullname,
+            email: authority.users.email,
+            role: authority.users.role,
+            created_at: authority.created_at,
+            updated_at: authority.updated_at
+        },
     });
 }));
 //# sourceMappingURL=authorityController.js.map
