@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import axios from "../../api/axiosInstance"; 
+import axios from "../../api/axiosInstance"; // adjust if your path is different
 
 interface Media {
   media_id: string;
@@ -35,9 +35,18 @@ const Complaint: React.FC = () => {
     const fetchComplaint = async () => {
       try {
         const response = await axios.get(`/api/complaints/${complaintId}`);
-        console.log(response.data);
         setComplaint(response.data);
-        setMedia(response.data.complaint_media || []);
+
+        try {
+          const complaintMediaResponse = await axios.get(
+            `/api/complaints/${complaintId}/media`
+          );
+          setMedia(complaintMediaResponse.data || []);
+        } catch (mediaError) {
+          // If media fetch fails with 404, just set empty array and continue
+          console.log("No media found for this complaint:", mediaError);
+          setMedia([]);
+        }
       } catch (error) {
         console.error("Failed to fetch complaint details", error);
       } finally {
@@ -98,6 +107,12 @@ const Complaint: React.FC = () => {
       <div className="card shadow-sm">
         <div className="card-header bg-light d-flex justify-content-between align-items-center">
           <h4 className="mb-0">Complaint #{complaint.complaint_id}</h4>
+          <button
+            className="btn btn-sm btn-outline-secondary"
+            onClick={() => window.history.back()}
+          >
+            Back
+          </button>
         </div>
         <div className="card-body">
           <div className="row mb-4">
@@ -146,7 +161,7 @@ const Complaint: React.FC = () => {
                 <div className="row g-3">
                   {media.map((item) => (
                     <div className="col-md-4 col-sm-6" key={item.media_id}>
-                      {(/\.(jpg|jpeg|png)$/i).test(item.media_url) ? (
+                      {item.media_type === "image" ? (
                         <div className="card h-100">
                           <img
                             src={item.media_url}
@@ -184,7 +199,9 @@ const Complaint: React.FC = () => {
                   ))}
                 </div>
               ) : (
-                <p className="text-muted">No media available</p>
+                <div className="alert alert-info">
+                  No media for this complaint
+                </div>
               )}
             </div>
           </div>

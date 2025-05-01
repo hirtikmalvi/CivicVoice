@@ -23,11 +23,21 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 // Allow requests from your frontend
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://civic-voice-six.vercel.app",
+];
+
 app.use(
   cors({
-    // origin: "https://civic-voice-six.vercel.app",
-    origin: "http://localhost:3000",
-    credentials: true, // if you're sending cookies or authorization headers
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
   })
 );
 // Routes
